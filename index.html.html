@@ -4,6 +4,7 @@
     <link rel="icon" href="favicon.ico.jpg?v=2" />
     <link rel="shortcut icon" href="favicon.ico.jpg?v=2" />
     <link rel="apple-touch-icon" href="favicon.ico.jpg?v=2" />
+    <link rel="preload" as="image" href="favicon.ico.jpg?v=2" />
   
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -46,7 +47,15 @@
         <aside class="sidebar">
           <div class="brand">
             <div class="brand-badge">
-              <img src="favicon.ico.jpg" alt="PropFast logo" />
+              <img
+                src="favicon.ico.jpg"
+                alt="PropFast logo"
+                loading="eager"
+                decoding="async"
+                fetchpriority="high"
+                width="56"
+                height="56"
+              />
             </div>
             <div>
               <h1>PropFast</h1>
@@ -653,6 +662,6 @@
       </section>
     </div>
 
-    <script src="app.js?v=propfast-20260709-1" defer></script>
+    <script src="app.js?v=propfast-20260709-2" defer></script>
   </body>
 </html>

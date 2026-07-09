@@ -2091,6 +2091,47 @@ window.addEventListener('keydown', (e) => {
 }());
 
 /* ============================================================
+   UX MICRO-INTERACTIONS (AOS-like via IntersectionObserver)
+   ============================================================ */
+(function initScrollRevealAnimations() {
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const revealTargets = document.querySelectorAll(
+    '.editor-panel, .analytics-card, .mini-card, .finance-monthly-card, .predict-price-card'
+  );
+
+  if (!revealTargets.length) return;
+
+  revealTargets.forEach(function(el) {
+    el.classList.add('reveal-on-scroll');
+  });
+
+  if (prefersReducedMotion || !('IntersectionObserver' in window)) {
+    revealTargets.forEach(function(el) {
+      el.classList.add('is-visible');
+    });
+    return;
+  }
+
+  const observer = new IntersectionObserver(
+    function(entries, obs) {
+      entries.forEach(function(entry) {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add('is-visible');
+        obs.unobserve(entry.target);
+      });
+    },
+    {
+      threshold: 0.14,
+      rootMargin: '0px 0px -8% 0px',
+    }
+  );
+
+  revealTargets.forEach(function(el) {
+    observer.observe(el);
+  });
+}());
+
+/* ============================================================
    MODULE 3 — PROPERTY PRICE PREDICTOR
    Su dung OLS (Ordinary Least Squares) regression:
    beta = (XtX)^-1 Xty

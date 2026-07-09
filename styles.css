@@ -3186,3 +3186,146 @@ body.light-theme .preview-table tbody tr:hover {
     width: calc(100vw - 24px);
   }
 }
+
+/* ============================================================
+   UX/PERFORMANCE OPTIMIZATION (Mobile + Micro-interactions)
+   ============================================================ */
+
+/* Lighter, consistent interaction feedback */
+.btn:focus-visible,
+.ghost-pill:focus-visible,
+.sidebar-link:focus-visible,
+.sidebar-ai-btn:focus-visible,
+.chatbot-toggle:focus-visible,
+.chatbot-icon-btn:focus-visible,
+.chatbot-quick-btn:focus-visible,
+.chatbot-send-btn:focus-visible,
+.consult-fab:focus-visible {
+  outline: 2px solid rgba(79, 209, 255, 0.78);
+  outline-offset: 2px;
+}
+
+.editor-panel:hover,
+.analytics-card:hover,
+.finance-stat-card:hover,
+.predict-similar-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 36px rgba(2, 8, 18, 0.28);
+}
+
+/* Scroll reveal (AOS-like, lightweight) */
+.reveal-on-scroll {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.46s ease, transform 0.46s ease;
+  will-change: opacity, transform;
+}
+
+.reveal-on-scroll.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Contain layout work for heavy panels */
+.editor-panel,
+.analytics-card,
+.finance-table-wrap,
+.chatbot-window {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 420px;
+}
+
+.finance-table {
+  min-width: 640px;
+}
+
+/* Better modal/table behavior on tablet/mobile */
+@media (max-width: 960px) {
+  .settings-dialog,
+  .finance-dialog,
+  .predict-dialog,
+  .consult-dialog {
+    width: min(100%, 720px);
+    max-height: 90vh;
+  }
+}
+
+@media (max-width: 720px) {
+  .settings-dialog,
+  .finance-dialog,
+  .predict-dialog,
+  .consult-dialog {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .finance-table-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .finance-table-wrap {
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .chatbot-window {
+    left: 0;
+    max-width: calc(100vw - 24px);
+    max-height: min(72vh, 520px);
+  }
+
+  .chatbot-messages {
+    max-height: min(38vh, 280px);
+  }
+}
+
+@media (max-width: 480px) {
+  .app-shell {
+    padding: 10px;
+  }
+
+  .dashboard-shell {
+    gap: 10px;
+  }
+
+  .finance-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .finance-sm-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .finance-table-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .chatbot-widget {
+    left: 10px;
+    bottom: 14px;
+  }
+}
+
+/* Respect reduced motion for accessibility + performance */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .reveal-on-scroll {
+    opacity: 1;
+    transform: none;
+  }
+}
