@@ -1761,6 +1761,28 @@ input::placeholder {
     grid-template-columns: 1fr;
   }
 
+  .sidebar {
+    padding: 16px 14px;
+    gap: 14px;
+    overflow: visible;
+  }
+
+  #projectList {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .sidebar-nav {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .sidebar-link {
+    text-align: center;
+  }
+
   .analytics-column {
     grid-template-columns: 1fr;
   }
@@ -1805,6 +1827,12 @@ input::placeholder {
   }
 
   .settings-sender-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .sidebar-nav {
     grid-template-columns: 1fr;
   }
 }
