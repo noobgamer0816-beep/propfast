@@ -1873,3 +1873,707 @@ window.addEventListener('keydown', (e) => {
     closeConsultModal();
   }
 });
+
+/* ============================================================
+   MODULE 1 — FINANCE CALCULATOR
+   Cong thuc PMT: M = P x [r(1+r)^n] / [(1+r)^n - 1]
+   P = tien vay, r = lai thang, n = so thang
+   ============================================================ */
+(function initFinanceCalc() {
+  const modal        = document.getElementById('finance-modal');
+  const openBtn      = document.getElementById('openFinanceBtn');
+  const closeBtn     = document.getElementById('closeFinanceBtn');
+  const backdrop     = document.getElementById('financeBackdrop');
+  const homePriceEl  = document.getElementById('financeHomePrice');
+  const loanRatioEl  = document.getElementById('financeLoanRatio');
+  const loanRatioVal = document.getElementById('financeLoanRatioVal');
+  const yearsEl      = document.getElementById('financeYears');
+  const rateEl       = document.getElementById('financeRate');
+  const priceHint    = document.getElementById('financePriceHint');
+
+  const monthlyEl       = document.getElementById('financeMonthly');
+  const principalEl     = document.getElementById('financePrincipal');
+  const totalInterestEl = document.getElementById('financeTotalInterest');
+  const totalPaymentEl  = document.getElementById('financeTotalPayment');
+  const pctPrincipalEl  = document.getElementById('financePctPrincipal');
+  const pctInterestEl   = document.getElementById('financePctInterest');
+  const donutP          = document.getElementById('financeDonutPrincipal');
+  const donutI          = document.getElementById('financeDonutInterest');
+  const tableBody       = document.getElementById('financeTableBody');
+  const expandBtn       = document.getElementById('financeExpandBtn');
+  const exportBtn       = document.getElementById('financeExportBtn');
+
+  if (!modal) return;
+
+  // Donut SVG circumference: 2 * pi * r = 2 * pi * 48
+  const CIRC = 2 * Math.PI * 48; // ~= 301.59
+
+  let currentSchedule = [];
+  let showAll = false;
+  let animFrameId = null;
+
+  /* --- Format helpers --- */
+  function fmt(n) {
+    if (n >= 1e9) return (n / 1e9).toFixed(2).replace(/\.?0+$/, '') + ' ty';
+    if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.?0+$/, '') + ' trieu';
+    return new Intl.NumberFormat('vi-VN').format(Math.round(n)) + ' d';
+  }
+
+  function fmtCurrency(n) {
+    return new Intl.NumberFormat('vi-VN').format(Math.round(n)) + ' d';
+  }
+
+  /* --- PMT formula --- */
+  function calcPMT(P, annualRate, years) {
+    const r = annualRate / 100 / 12;
+    const n = years * 12;
+    if (r === 0) return P / n;
+    const factor = Math.pow(1 + r, n);
+    return P * (r * factor) / (factor - 1);
+  }
+
+  /* --- Build amortization schedule --- */
+  function buildSchedule(P, annualRate, years) {
+    const r = annualRate / 100 / 12;
+    const n = years * 12;
+    const M = calcPMT(P, annualRate, years);
+    const rows = [];
+    let balance = P;
+    for (let month = 1; month <= n; month++) {
+      const interest = balance * r;
+      const principal = M - interest;
+      balance = Math.max(0, balance - principal);
+      rows.push({ month, payment: M, principal, interest, balance });
+    }
+    return rows;
+  }
+
+  /* --- Animate counter --- */
+  function animateValue(el, target) {
+    if (animFrameId) cancelAnimationFrame(animFrameId);
+    const start = performance.now();
+    const duration = 600;
+    const from = 0;
+    function step(now) {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      el.textContent = fmtCurrency(from + (target - from) * eased);
+      if (progress < 1) animFrameId = requestAnimationFrame(step);
+    }
+    animFrameId = requestAnimationFrame(step);
+  }
+
+  /* --- Render donut chart --- */
+  function renderDonut(principalTotal, interestTotal) {
+    const total = principalTotal + interestTotal;
+    if (total === 0) return;
+    const pArc = (principalTotal / total) * CIRC;
+    const iArc = (interestTotal / total) * CIRC;
+    donutP.setAttribute('stroke-dasharray', `${pArc} ${CIRC}`);
+    donutP.setAttribute('stroke-dashoffset', '0');
+    donutI.setAttribute('stroke-dasharray', `${iArc} ${CIRC}`);
+    donutI.setAttribute('stroke-dashoffset', `${-pArc}`);
+  }
+
+  /* --- Render table rows --- */
+  function renderTable(schedule, limit) {
+    const today = new Date();
+    tableBody.innerHTML = '';
+    const rows = limit ? schedule.slice(0, limit) : schedule;
+    rows.forEach(row => {
+      const tr = document.createElement('tr');
+      if (row.month === (today.getMonth() + 1)) tr.classList.add('current-month');
+      tr.innerHTML = `
+        <td>Thang ${row.month}</td>
+        <td>${fmtCurrency(row.payment)}</td>
+        <td style="color:var(--primary)">${fmtCurrency(row.principal)}</td>
+        <td style="color:var(--danger)">${fmtCurrency(row.interest)}</td>
+        <td>${fmtCurrency(row.balance)}</td>
+      `;
+      tableBody.appendChild(tr);
+    });
+  }
+
+  /* --- Export CSV --- */
+  function exportCSV(schedule) {
+    const header = 'Thang,Tra moi thang (VND),Tien goc (VND),Tien lai (VND),Du no con lai (VND)';
+    const rows = schedule.map(r =>
+      `${r.month},${Math.round(r.payment)},${Math.round(r.principal)},${Math.round(r.interest)},${Math.round(r.balance)}`
+    );
+    const csv = [header, ...rows].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'lich-tra-no-propfast.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    if (typeof showToast === 'function') showToast('Đã xuất file CSV lịch trả nợ!');
+  }
+
+  /* --- Main calculate --- */
+  let calcTimer = null;
+  function calculate() {
+    clearTimeout(calcTimer);
+    calcTimer = setTimeout(() => {
+      const homePrice  = parseFloat(homePriceEl.value) || 0;
+      const loanRatio  = parseFloat(loanRatioEl.value) / 100;
+      const years      = parseInt(yearsEl.value);
+      const annualRate = parseFloat(rateEl.value) || 0;
+      const P = homePrice * loanRatio;
+
+      if (P <= 0 || annualRate <= 0 || years <= 0) return;
+
+      const M = calcPMT(P, annualRate, years);
+      const n = years * 12;
+      const totalPayment = M * n;
+      const totalInterest = totalPayment - P;
+
+      if (priceHint) priceHint.textContent = fmt(homePrice);
+
+      animateValue(monthlyEl, M);
+
+      principalEl.textContent = fmtCurrency(P);
+      totalInterestEl.textContent = fmtCurrency(totalInterest);
+      totalPaymentEl.textContent = fmtCurrency(totalPayment);
+
+      const pPct = Math.round((P / totalPayment) * 100);
+      const iPct = 100 - pPct;
+      pctPrincipalEl.textContent = pPct + '%';
+      pctInterestEl.textContent = iPct + '%';
+
+      renderDonut(P, totalInterest);
+
+      currentSchedule = buildSchedule(P, annualRate, years);
+      renderTable(currentSchedule, showAll ? null : 12);
+    }, 300);
+  }
+
+  /* --- Event bindings --- */
+  function openModal() {
+    modal.classList.add('show-modal');
+    modal.setAttribute('aria-hidden', 'false');
+    modal.querySelector('.settings-dialog').focus();
+    calculate();
+  }
+
+  function closeModal() {
+    modal.classList.remove('show-modal');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  if (openBtn) openBtn.addEventListener('click', openModal);
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  if (backdrop) backdrop.addEventListener('click', closeModal);
+
+  loanRatioEl.addEventListener('input', () => {
+    loanRatioVal.textContent = loanRatioEl.value;
+    calculate();
+  });
+
+  [homePriceEl, rateEl, yearsEl].forEach(el => {
+    if (el) el.addEventListener('input', calculate);
+  });
+
+  if (expandBtn) {
+    expandBtn.addEventListener('click', () => {
+      showAll = !showAll;
+      expandBtn.textContent = showAll ? 'Thu gon' : 'Xem toan bo';
+      renderTable(currentSchedule, showAll ? null : 12);
+    });
+  }
+
+  if (exportBtn) exportBtn.addEventListener('click', () => exportCSV(currentSchedule));
+
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && modal.classList.contains('show-modal')) closeModal();
+  });
+}());
+
+/* ============================================================
+   MODULE 3 — PROPERTY PRICE PREDICTOR
+   Su dung OLS (Ordinary Least Squares) regression:
+   beta = (XtX)^-1 Xty
+   ============================================================ */
+(function initPricePredictor() {
+  const modal       = document.getElementById('predict-modal');
+  const openBtn     = document.getElementById('openPredictBtn');
+  const closeBtn    = document.getElementById('closePredictBtn');
+  const backdrop    = document.getElementById('predictBackdrop');
+  const areaEl      = document.getElementById('predictArea');
+  const areaVal     = document.getElementById('predictAreaVal');
+  const districtEl  = document.getElementById('predictDistrict');
+  const floorEl     = document.getElementById('predictFloor');
+  const floorVal    = document.getElementById('predictFloorVal');
+  const priceEl     = document.getElementById('predictPrice');
+  const rangeEl     = document.getElementById('predictRange');
+  const r2LabelEl   = document.getElementById('predictR2Label');
+  const confBarEl   = document.getElementById('predictConfBar');
+  const similarEl   = document.getElementById('predictSimilar');
+
+  if (!modal) return;
+
+  /* -------- Training dataset: thi truong TP.HCM ----------
+     Moi dong: [dientich_m2, phong_ngu, district_score(1-10), tang, gia_ty]
+  ------------------------------------------------------- */
+  const DATASET = [
+    [45,  1, 10, 5,  3.2,  'Quan 1'],
+    [65,  2, 10, 8,  5.8,  'Quan 1'],
+    [90,  2, 10, 12, 8.9,  'Quan 1'],
+    [120, 3, 10, 20, 14.5, 'Quan 1'],
+    [55,  2,  9, 4,  4.8,  'Quan 2'],
+    [80,  2,  9, 6,  7.2,  'Quan 2'],
+    [100, 3,  9, 10, 10.0, 'Quan 2'],
+    [130, 4,  9, 15, 13.5, 'Quan 2'],
+    [180, 5,  9, 22, 19.0, 'Quan 2'],
+    [55,  2,  8, 4,  4.1,  'Quan 3'],
+    [75,  2,  8, 6,  5.9,  'Quan 3'],
+    [90,  3,  8, 9,  7.8,  'Quan 3'],
+    [40,  1,  6, 2,  1.8,  'Quan 4'],
+    [60,  2,  6, 3,  2.9,  'Quan 4'],
+    [95,  3,  8, 5,  6.5,  'Quan 7'],
+    [130, 4,  8, 10, 9.8,  'Quan 7'],
+    [150, 4,  8, 15, 12.3, 'Quan 7'],
+    [50,  1,  5, 3,  1.6,  'Quan 9'],
+    [70,  2,  5, 5,  2.4,  'Quan 9'],
+    [100, 3,  5, 7,  3.9,  'Quan 9'],
+    [55,  2,  6, 2,  2.1,  'Quan 10'],
+    [80,  2,  7, 4,  3.8,  'Binh Thanh'],
+    [110, 3,  7, 8,  6.2,  'Binh Thanh'],
+    [35,  1,  7, 1,  1.5,  'Binh Thanh'],
+    [65,  2,  6, 3,  2.7,  'Tan Binh'],
+    [90,  3,  6, 5,  4.1,  'Tan Binh'],
+    [70,  2,  5, 4,  2.2,  'Thu Duc'],
+    [100, 3,  5, 6,  3.5,  'Thu Duc'],
+    [200, 5, 10, 28, 22.0, 'Quan 1'],
+    [160, 4,  9, 18, 16.5, 'Quan 2'],
+  ];
+
+  /* -------- Matrix operations (pure JS) ---------- */
+
+  function matT(A) {
+    return A[0].map((_, j) => A.map(r => r[j]));
+  }
+
+  function matMul(A, B) {
+    const m = A.length, k = B.length, n = B[0].length;
+    return Array.from({length: m}, (_, i) =>
+      Array.from({length: n}, (_, j) =>
+        A[i].reduce((s, _, p) => s + A[i][p] * B[p][j], 0)
+      )
+    );
+  }
+
+  function matInv(A) {
+    const n = A.length;
+    const M = A.map((row, i) => [
+      ...row.map(v => v),
+      ...Array.from({length: n}, (_, j) => i === j ? 1 : 0),
+    ]);
+    for (let col = 0; col < n; col++) {
+      let pivot = col;
+      for (let r = col + 1; r < n; r++) {
+        if (Math.abs(M[r][col]) > Math.abs(M[pivot][col])) pivot = r;
+      }
+      [M[col], M[pivot]] = [M[pivot], M[col]];
+      const p = M[col][col];
+      if (Math.abs(p) < 1e-12) throw new Error('Singular matrix');
+      for (let j = 0; j < 2 * n; j++) M[col][j] /= p;
+      for (let r = 0; r < n; r++) {
+        if (r === col) continue;
+        const f = M[r][col];
+        for (let j = 0; j < 2 * n; j++) M[r][j] -= f * M[col][j];
+      }
+    }
+    return M.map(row => row.slice(n));
+  }
+
+  function fitOLS(X, y) {
+    const Xt   = matT(X);
+    const XtX  = matMul(Xt, X);
+    const XtXi = matInv(XtX);
+    const Xty  = matMul(Xt, y.map(v => [v]));
+    return matMul(XtXi, Xty).map(b => b[0]);
+  }
+
+  function calcR2(y, yPred) {
+    const mean = y.reduce((a, b) => a + b, 0) / y.length;
+    const ssTot = y.reduce((s, v) => s + (v - mean) ** 2, 0);
+    const ssRes = y.reduce((s, v, i) => s + (v - yPred[i]) ** 2, 0);
+    return Math.max(0, Math.min(1, 1 - ssRes / ssTot));
+  }
+
+  /* -------- Feature normalization (Min-Max) ---------- */
+  const features = DATASET.map(d => [d[0], d[1], d[2], d[3]]);
+  const prices   = DATASET.map(d => d[4]);
+
+  const mins = [0, 1, 2, 3].map(i => Math.min(...features.map(f => f[i])));
+  const maxs = [0, 1, 2, 3].map(i => Math.max(...features.map(f => f[i])));
+
+  function normalize(vals) {
+    return vals.map((v, i) => (maxs[i] - mins[i]) === 0 ? 0 : (v - mins[i]) / (maxs[i] - mins[i]));
+  }
+
+  const X = features.map(f => [1, ...normalize(f)]);
+  const beta = fitOLS(X, prices);
+
+  const yPred = X.map(row => row.reduce((s, v, i) => s + v * beta[i], 0));
+  const r2 = calcR2(prices, yPred);
+
+  const residuals = prices.map((y, i) => y - yPred[i]);
+  const sse = residuals.reduce((s, r) => s + r * r, 0);
+  const mse = sse / (prices.length - beta.length);
+  const rmse = Math.sqrt(mse);
+
+  /* -------- Predict price ---------- */
+  function predict(area, bed, distScore, floor) {
+    const normRow = [1, ...normalize([area, bed, distScore, floor])];
+    return normRow.reduce((s, v, i) => s + v * beta[i], 0);
+  }
+
+  /* -------- Find k nearest listings (Euclidean distance) ---------- */
+  function findSimilar(area, bed, distScore, floor, k) {
+    k = k || 3;
+    const queryNorm = normalize([area, bed, distScore, floor]);
+    return DATASET
+      .map((d, idx) => {
+        const dNorm = normalize([d[0], d[1], d[2], d[3]]);
+        const dist = Math.sqrt(dNorm.reduce((s, v, i) => s + (v - queryNorm[i]) ** 2, 0));
+        return { idx, dist, data: d };
+      })
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, k);
+  }
+
+  /* -------- Render results ---------- */
+  function renderResults() {
+    const area      = parseFloat(areaEl.value)      || 80;
+    const bed       = parseInt(document.querySelector('input[name="predictBed"]:checked') ? document.querySelector('input[name="predictBed"]:checked').value : 2);
+    const distScore = parseFloat(districtEl.value)  || 7;
+    const floor     = parseFloat(floorEl.value)     || 5;
+
+    const priceTy = predict(area, bed, distScore, floor);
+    const low  = Math.max(0.5, priceTy - 1.96 * rmse);
+    const high = priceTy + 1.96 * rmse;
+
+    if (priceEl) priceEl.textContent = priceTy.toFixed(2).replace('.', ',') + ' ty d';
+    if (rangeEl) rangeEl.textContent = 'Khoang tin cay 95%: ' + low.toFixed(1) + ' - ' + high.toFixed(1) + ' ty d';
+
+    const r2Pct = Math.round(r2 * 100);
+    if (r2LabelEl) r2LabelEl.textContent = r2Pct + '%';
+    if (confBarEl) {
+      confBarEl.style.width = r2Pct + '%';
+      confBarEl.style.background = r2Pct >= 80 ? 'var(--success)' : r2Pct >= 60 ? 'var(--warning)' : 'var(--danger)';
+    }
+
+    if (similarEl) {
+      const similar = findSimilar(area, bed, distScore, floor);
+      similarEl.innerHTML = similar.map(function(item) {
+        const data = item.data;
+        return '<div class="predict-similar-card"><span class="p-price">' + data[4].toFixed(1) + ' ty d</span><span class="p-detail">' + data[0] + 'm2 ' + data[1] + ' PN ' + data[5] + '</span></div>';
+      }).join('');
+    }
+  }
+
+  /* -------- Event bindings ---------- */
+  function openModal() {
+    modal.classList.add('show-modal');
+    modal.setAttribute('aria-hidden', 'false');
+    modal.querySelector('.settings-dialog').focus();
+    renderResults();
+  }
+
+  function closeModal() {
+    modal.classList.remove('show-modal');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  if (openBtn) openBtn.addEventListener('click', openModal);
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  if (backdrop) backdrop.addEventListener('click', closeModal);
+
+  areaEl.addEventListener('input', function() { areaVal.textContent = areaEl.value; renderResults(); });
+  floorEl.addEventListener('input', function() { floorVal.textContent = floorEl.value; renderResults(); });
+  districtEl.addEventListener('change', renderResults);
+  document.querySelectorAll('input[name="predictBed"]').forEach(function(r) { r.addEventListener('change', renderResults); });
+
+  window.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && modal.classList.contains('show-modal')) closeModal();
+  });
+}());
+
+/* ============================================================
+   MODULE 2 — AI CHATBOT (Moi Gioi Ao 24/7)
+   Ho tro OpenAI GPT va Google Gemini API
+   ============================================================ */
+(function initChatbot() {
+  /* --- Cau hinh ---
+     Thay YOUR_OPENAI_KEY hoac YOUR_GEMINI_KEY bang API key thuc.
+     Dat provider = 'openai' hoac 'gemini'.
+  ---------------------------------------------------------------- */
+  const CHATBOT_CONFIG = {
+    provider: 'openai',
+    openaiApiKey: 'YOUR_OPENAI_KEY',
+    geminiApiKey: 'YOUR_GEMINI_KEY',
+    model: 'gpt-4o-mini',
+    geminiModel: 'gemini-1.5-flash',
+    systemPrompt: 'Ban la PropFast AI — tro ly moi gioi bat dong san chuyen nghiep tai Viet Nam. Nhiem vu: tu van mua/thue nha, giai thich thu tuc phap ly (so do, so hong, hop dong mua ban), goi y du an phu hop tui tien, tinh toan kha nang vay von ngan hang. Phong cach: than thien, ngan gon, dung so lieu cu the khi duoc hoi ve gia. Tra loi bang tieng Viet. Giu cau tra loi duoi 150 tu tru khi can giai thich chi tiet.',
+  };
+
+  const STORAGE_KEY_CHAT = 'propfast-chatbot-history';
+  const MAX_HISTORY = 20;
+
+  const widget       = document.getElementById('chatbot-widget');
+  const toggleBtn    = document.getElementById('chatbotToggle');
+  const window_      = document.getElementById('chatbotWindow');
+  const messagesEl   = document.getElementById('chatbotMessages');
+  const form         = document.getElementById('chatbotForm');
+  const input        = document.getElementById('chatbotInput');
+  const clearBtn     = document.getElementById('chatbotClearBtn');
+  const closeBtn     = document.getElementById('chatbotCloseBtn');
+  const badge        = document.getElementById('chatbotBadge');
+  const quickReplies = document.getElementById('chatbotQuickReplies');
+
+  if (!widget) return;
+
+  let isOpen = false;
+  let isThinking = false;
+
+  let chatHistory = JSON.parse(localStorage.getItem(STORAGE_KEY_CHAT) || '[]');
+
+  /* --- Helpers --- */
+  function formatTime(date) {
+    return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function scrollToBottom() {
+    requestAnimationFrame(function() {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    });
+  }
+
+  function saveChatHistory() {
+    const trimmed = chatHistory.slice(-MAX_HISTORY);
+    localStorage.setItem(STORAGE_KEY_CHAT, JSON.stringify(trimmed));
+  }
+
+  /* --- Render a single message bubble --- */
+  function appendMessage(role, text) {
+    const msgEl = document.createElement('div');
+    msgEl.className = 'chatbot-msg ' + role;
+    const bubble = document.createElement('div');
+    bubble.className = 'chatbot-msg-bubble';
+    bubble.textContent = text;
+    const time = document.createElement('span');
+    time.className = 'chatbot-msg-time';
+    time.textContent = formatTime(new Date());
+    msgEl.appendChild(bubble);
+    msgEl.appendChild(time);
+    messagesEl.appendChild(msgEl);
+    scrollToBottom();
+    return msgEl;
+  }
+
+  /* --- Typing indicator --- */
+  function showTyping() {
+    const typingEl = document.createElement('div');
+    typingEl.className = 'chatbot-msg bot chatbot-typing';
+    typingEl.id = 'chatbotTyping';
+    typingEl.innerHTML = '<div class="chatbot-msg-bubble"><span class="chatbot-dot"></span><span class="chatbot-dot"></span><span class="chatbot-dot"></span></div>';
+    messagesEl.appendChild(typingEl);
+    scrollToBottom();
+  }
+
+  function hideTyping() {
+    const el = document.getElementById('chatbotTyping');
+    if (el) el.remove();
+  }
+
+  /* --- Initial render from history --- */
+  function renderHistory() {
+    messagesEl.innerHTML = '';
+    if (chatHistory.length === 0) {
+      const welcome = document.createElement('div');
+      welcome.className = 'chatbot-msg bot';
+      welcome.innerHTML = '<div class="chatbot-msg-bubble">Xin chao! Toi la PropFast AI<br>Toi co the giup ban tu van mua/thue nha, tinh lai suat vay, va giai dap thac mac ve thu tuc phap ly bat dong san.<br><br>Ban can tu van gi hom nay?</div><span class="chatbot-msg-time">' + formatTime(new Date()) + '</span>';
+      messagesEl.appendChild(welcome);
+    } else {
+      chatHistory.forEach(function(msg) { appendMessage(msg.role, msg.content); });
+    }
+    checkApiKeyWarning();
+  }
+
+  /* --- Check API key --- */
+  function checkApiKeyWarning() {
+    const existing = document.getElementById('chatbotApiWarning');
+    if (existing) existing.remove();
+
+    const key = CHATBOT_CONFIG.provider === 'openai'
+      ? CHATBOT_CONFIG.openaiApiKey
+      : CHATBOT_CONFIG.geminiApiKey;
+
+    if (key.startsWith('YOUR_')) {
+      const warn = document.createElement('div');
+      warn.id = 'chatbotApiWarning';
+      warn.className = 'chatbot-api-warning';
+      warn.innerHTML = 'Chua cai API key. Mo app.js, tim CHATBOT_CONFIG va thay YOUR_OPENAI_KEY bang key thuc. Lay key mien phi tai platform.openai.com.';
+      messagesEl.insertBefore(warn, messagesEl.firstChild);
+    }
+  }
+
+  /* --- Call OpenAI --- */
+  async function callOpenAI(messages) {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + CHATBOT_CONFIG.openaiApiKey,
+      },
+      body: JSON.stringify({
+        model: CHATBOT_CONFIG.model,
+        messages: messages,
+        max_tokens: 300,
+        temperature: 0.7,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(function() { return {}; });
+      throw new Error((err.error && err.error.message) || ('HTTP ' + res.status));
+    }
+    const data = await res.json();
+    return data.choices[0].message.content.trim();
+  }
+
+  /* --- Call Gemini --- */
+  async function callGemini(messages) {
+    const contents = messages
+      .filter(function(m) { return m.role !== 'system'; })
+      .map(function(m) {
+        return {
+          role: m.role === 'user' ? 'user' : 'model',
+          parts: [{ text: m.content }],
+        };
+      });
+
+    const res = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/' + CHATBOT_CONFIG.geminiModel + ':generateContent?key=' + CHATBOT_CONFIG.geminiApiKey,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: contents,
+          systemInstruction: { parts: [{ text: CHATBOT_CONFIG.systemPrompt }] },
+          generationConfig: { maxOutputTokens: 300, temperature: 0.7 },
+        }),
+      }
+    );
+    if (!res.ok) throw new Error('Gemini HTTP ' + res.status);
+    const data = await res.json();
+    return data.candidates[0].content.parts[0].text.trim();
+  }
+
+  /* --- Send message to AI --- */
+  async function sendMessage(userText) {
+    if (!userText.trim() || isThinking) return;
+
+    const key = CHATBOT_CONFIG.provider === 'openai'
+      ? CHATBOT_CONFIG.openaiApiKey
+      : CHATBOT_CONFIG.geminiApiKey;
+
+    if (key.startsWith('YOUR_')) {
+      appendMessage('bot', 'Vui long cai API key vao CHATBOT_CONFIG trong app.js de su dung chatbot.');
+      return;
+    }
+
+    isThinking = true;
+    input.disabled = true;
+
+    if (quickReplies) quickReplies.style.display = 'none';
+
+    chatHistory.push({ role: 'user', content: userText });
+    appendMessage('user', userText);
+    saveChatHistory();
+
+    showTyping();
+
+    const messages = [
+      { role: 'system', content: CHATBOT_CONFIG.systemPrompt },
+    ].concat(chatHistory.slice(-10));
+
+    let reply = '';
+    let attempts = 0;
+    while (attempts < 2) {
+      try {
+        reply = CHATBOT_CONFIG.provider === 'gemini'
+          ? await callGemini(messages)
+          : await callOpenAI(messages);
+        break;
+      } catch (err) {
+        attempts++;
+        if (attempts < 2) {
+          await new Promise(function(r) { setTimeout(r, 3000); });
+        } else {
+          reply = 'Dang bao tri, vui long thu lai sau. Hoac goi hotline de duoc ho tro truc tiep.';
+        }
+      }
+    }
+
+    hideTyping();
+    chatHistory.push({ role: 'assistant', content: reply });
+    appendMessage('bot', reply);
+    saveChatHistory();
+
+    isThinking = false;
+    input.disabled = false;
+    input.focus();
+  }
+
+  /* --- Event bindings --- */
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', function() {
+      isOpen = !isOpen;
+      window_.classList.toggle('open', isOpen);
+      window_.setAttribute('aria-hidden', String(!isOpen));
+      if (isOpen) {
+        badge.hidden = true;
+        if (input) input.focus();
+        renderHistory();
+      }
+    });
+  }
+
+  if (closeBtn) closeBtn.addEventListener('click', function() {
+    isOpen = false;
+    window_.classList.remove('open');
+    window_.setAttribute('aria-hidden', 'true');
+  });
+
+  if (clearBtn) clearBtn.addEventListener('click', function() {
+    chatHistory = [];
+    saveChatHistory();
+    renderHistory();
+    if (quickReplies) quickReplies.style.display = '';
+    if (typeof showToast === 'function') showToast('Da xoa lich su chat');
+  });
+
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const text = input.value.trim();
+      input.value = '';
+      sendMessage(text);
+    });
+  }
+
+  document.querySelectorAll('.chatbot-quick-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      sendMessage(btn.dataset.q);
+    });
+  });
+
+  if (!isOpen) {
+    setTimeout(function() {
+      if (!isOpen && badge) badge.hidden = false;
+    }, 4000);
+  }
+}());

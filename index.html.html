@@ -13,7 +13,7 @@
     />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://formspree.io; object-src 'none'; base-uri 'self'; form-action 'self' https://formspree.io; frame-ancestors 'none'"
+      content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://formspree.io https://api.openai.com https://generativelanguage.googleapis.com; object-src 'none'; base-uri 'self'; form-action 'self' https://formspree.io; frame-ancestors 'none'"
     />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="theme-color" content="#060b14" />
@@ -69,6 +69,18 @@
               <a href="#dashboardPanel" class="sidebar-link" data-workspace-link="sent">Báo giá đã gửi</a>
               <a href="#insightsPanel" class="sidebar-link" data-workspace-link="cadence">Cài đặt hệ thống</a>
             </nav>
+          </div>
+
+          <div class="sidebar-section">
+            <p class="sidebar-label">Vũ Khí AI 🤖</p>
+            <div class="sidebar-ai-tools">
+              <button type="button" id="openFinanceBtn" class="sidebar-ai-btn">
+                <span>🏦</span> Máy Tính Tài Chính
+              </button>
+              <button type="button" id="openPredictBtn" class="sidebar-ai-btn">
+                <span>🏠</span> Định Giá Nhanh
+              </button>
+            </div>
           </div>
 
           <div class="sidebar-foot">
@@ -384,6 +396,210 @@
     </div>
 
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- ===== MODULE 1: FINANCE CALCULATOR MODAL ===== -->
+    <div id="finance-modal" class="settings-modal" aria-hidden="true">
+      <div class="settings-backdrop" id="financeBackdrop"></div>
+      <section class="settings-dialog finance-dialog" role="dialog" aria-modal="true" aria-labelledby="financeTitle" tabindex="-1">
+        <header class="settings-header">
+          <div>
+            <p class="eyebrow">Công cụ tính toán</p>
+            <h2 id="financeTitle">Máy Tính Tài Chính 🏦</h2>
+          </div>
+          <button type="button" id="closeFinanceBtn" class="modal-close-btn" aria-label="Đóng">×</button>
+        </header>
+        <div class="settings-content finance-content">
+          <div class="finance-layout">
+            <div class="finance-inputs-col">
+              <div class="finance-field-group">
+                <label for="financeHomePrice" class="finance-label">Giá trị căn nhà</label>
+                <input id="financeHomePrice" type="number" min="0" step="100000000" value="3000000000" class="finance-input" />
+                <span class="finance-hint" id="financePriceHint">3 tỷ đồng</span>
+              </div>
+              <div class="finance-field-group">
+                <label for="financeLoanRatio" class="finance-label">Tỷ lệ vay: <strong id="financeLoanRatioVal">70</strong>%</label>
+                <input id="financeLoanRatio" type="range" min="10" max="90" step="5" value="70" class="finance-range" />
+              </div>
+              <div class="finance-field-group">
+                <label for="financeYears" class="finance-label">Số năm vay</label>
+                <select id="financeYears" class="finance-select">
+                  <option value="5">5 năm</option>
+                  <option value="10">10 năm</option>
+                  <option value="15">15 năm</option>
+                  <option value="20" selected>20 năm</option>
+                  <option value="25">25 năm</option>
+                  <option value="30">30 năm</option>
+                </select>
+              </div>
+              <div class="finance-field-group">
+                <label for="financeRate" class="finance-label">Lãi suất năm (%)</label>
+                <input id="financeRate" type="number" min="0.1" max="30" step="0.1" value="8.5" class="finance-input" />
+              </div>
+            </div>
+            <div class="finance-results-col">
+              <div class="finance-monthly-card">
+                <p class="eyebrow">Trả mỗi tháng</p>
+                <strong id="financeMonthly" class="finance-monthly-value">—</strong>
+              </div>
+              <div class="finance-stats-grid">
+                <div class="finance-stat-card">
+                  <span>Số tiền vay</span>
+                  <strong id="financePrincipal">—</strong>
+                </div>
+                <div class="finance-stat-card">
+                  <span>Tổng lãi</span>
+                  <strong id="financeTotalInterest" style="color:var(--danger)">—</strong>
+                </div>
+                <div class="finance-stat-card">
+                  <span>Tổng thanh toán</span>
+                  <strong id="financeTotalPayment">—</strong>
+                </div>
+              </div>
+              <div class="finance-chart-row">
+                <svg id="financeDonut" viewBox="0 0 120 120" width="110" height="110" aria-label="Biểu đồ gốc vs lãi" style="flex-shrink:0">
+                  <circle cx="60" cy="60" r="48" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="20"/>
+                  <circle id="financeDonutPrincipal" cx="60" cy="60" r="48" fill="none" stroke="#4fd1ff" stroke-width="20" stroke-dasharray="0 302" transform="rotate(-90 60 60)" style="transition:stroke-dasharray 0.6s ease"/>
+                  <circle id="financeDonutInterest" cx="60" cy="60" r="48" fill="none" stroke="#ff7086" stroke-width="20" stroke-dasharray="0 302" transform="rotate(-90 60 60)" style="transition:stroke-dasharray 0.6s ease,stroke-dashoffset 0.6s ease"/>
+                </svg>
+                <div class="finance-legend">
+                  <div class="finance-legend-item"><i style="background:var(--primary)"></i><span>Tiền gốc</span><strong id="financePctPrincipal">—</strong></div>
+                  <div class="finance-legend-item"><i style="background:var(--danger)"></i><span>Tiền lãi</span><strong id="financePctInterest">—</strong></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="finance-table-section">
+            <div class="finance-table-header-row">
+              <h4>Lịch Trả Nợ Chi Tiết</h4>
+              <div class="finance-table-actions">
+                <button type="button" id="financeExpandBtn" class="btn btn-ghost finance-sm-btn">Xem toàn bộ</button>
+                <button type="button" id="financeExportBtn" class="btn btn-secondary finance-sm-btn">⬇ Xuất CSV</button>
+              </div>
+            </div>
+            <div class="finance-table-wrap" id="financeTableWrap">
+              <table class="finance-table" id="financeTable">
+                <thead>
+                  <tr><th>Tháng</th><th>Trả mỗi tháng</th><th>Tiền gốc</th><th>Tiền lãi</th><th>Dư nợ còn lại</th></tr>
+                </thead>
+                <tbody id="financeTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ===== MODULE 3: PRICE PREDICTOR MODAL ===== -->
+    <div id="predict-modal" class="settings-modal" aria-hidden="true">
+      <div class="settings-backdrop" id="predictBackdrop"></div>
+      <section class="settings-dialog predict-dialog" role="dialog" aria-modal="true" aria-labelledby="predictTitle" tabindex="-1">
+        <header class="settings-header">
+          <div>
+            <p class="eyebrow">AI · Hồi quy tuyến tính</p>
+            <h2 id="predictTitle">Định Giá Nhanh 🏠</h2>
+          </div>
+          <button type="button" id="closePredictBtn" class="modal-close-btn" aria-label="Đóng">×</button>
+        </header>
+        <div class="settings-content predict-content">
+          <div class="predict-layout">
+            <div class="predict-inputs-col">
+              <div class="finance-field-group">
+                <label for="predictArea" class="finance-label">Diện tích: <strong id="predictAreaVal">80</strong> m²</label>
+                <input id="predictArea" type="range" min="20" max="300" step="5" value="80" class="finance-range" />
+              </div>
+              <div class="finance-field-group">
+                <label class="finance-label">Số phòng ngủ</label>
+                <div class="predict-radio-group" role="radiogroup" aria-label="Số phòng ngủ">
+                  <label class="predict-radio"><input type="radio" name="predictBed" value="1" /> 1</label>
+                  <label class="predict-radio"><input type="radio" name="predictBed" value="2" checked /> 2</label>
+                  <label class="predict-radio"><input type="radio" name="predictBed" value="3" /> 3</label>
+                  <label class="predict-radio"><input type="radio" name="predictBed" value="4" /> 4</label>
+                  <label class="predict-radio"><input type="radio" name="predictBed" value="5" /> 5+</label>
+                </div>
+              </div>
+              <div class="finance-field-group">
+                <label for="predictDistrict" class="finance-label">Quận/Huyện (TP.HCM)</label>
+                <select id="predictDistrict" class="finance-select">
+                  <option value="10">Quận 1 (Trung tâm)</option>
+                  <option value="9">Quận 2 / TP. Thủ Đức (khu mới)</option>
+                  <option value="8">Quận 3 (trung tâm)</option>
+                  <option value="6">Quận 4</option>
+                  <option value="8" selected>Quận 7 (Phú Mỹ Hưng)</option>
+                  <option value="7">Bình Thạnh</option>
+                  <option value="6">Tân Bình</option>
+                  <option value="5">Quận 9 / Thủ Đức cũ</option>
+                  <option value="5">Quận 10</option>
+                  <option value="4">Bình Dương / vùng ven</option>
+                </select>
+              </div>
+              <div class="finance-field-group">
+                <label for="predictFloor" class="finance-label">Tầng: <strong id="predictFloorVal">5</strong></label>
+                <input id="predictFloor" type="range" min="1" max="40" step="1" value="5" class="finance-range" />
+              </div>
+            </div>
+            <div class="predict-results-col">
+              <div class="finance-monthly-card predict-price-card">
+                <p class="eyebrow">Giá ước tính</p>
+                <strong id="predictPrice" class="finance-monthly-value">—</strong>
+                <span id="predictRange" class="predict-range-text">—</span>
+              </div>
+              <div class="predict-confidence">
+                <div class="predict-conf-header">
+                  <span class="finance-label">Độ tin cậy mô hình (R²)</span>
+                  <strong id="predictR2Label">—</strong>
+                </div>
+                <div class="predict-conf-bar-bg">
+                  <div id="predictConfBar" class="predict-conf-bar" style="width:0%"></div>
+                </div>
+              </div>
+              <div class="predict-disclaimer">
+                ⚠️ Giá chỉ mang tính tham khảo dựa trên dữ liệu hồi quy tuyến tính (OLS). Không phải định giá chính thức.
+              </div>
+            </div>
+          </div>
+          <div class="predict-similar-section">
+            <h4>Listings Tương Tự Nhất</h4>
+            <div id="predictSimilar" class="predict-similar-grid"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ===== MODULE 2: AI CHATBOT WIDGET ===== -->
+    <div id="chatbot-widget" class="chatbot-widget">
+      <button type="button" id="chatbotToggle" class="chatbot-toggle" aria-label="Mở chat AI tư vấn">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10a10 10 0 0 1-10-10A10 10 0 0 1 12 2z"/><path d="M8 10h.01M12 10h.01M16 10h.01"/></svg>
+        <span id="chatbotBadge" class="chatbot-badge" hidden>1</span>
+      </button>
+      <div id="chatbotWindow" class="chatbot-window" aria-hidden="true">
+        <header class="chatbot-header">
+          <div class="chatbot-header-info">
+            <div class="chatbot-avatar">🤖</div>
+            <div>
+              <strong>PropFast AI</strong>
+              <span class="chatbot-status">● Online</span>
+            </div>
+          </div>
+          <div class="chatbot-header-actions">
+            <button type="button" id="chatbotClearBtn" class="chatbot-icon-btn" title="Xóa lịch sử">🗑</button>
+            <button type="button" id="chatbotCloseBtn" class="chatbot-icon-btn" aria-label="Đóng chat">×</button>
+          </div>
+        </header>
+        <div id="chatbotMessages" class="chatbot-messages" role="log" aria-live="polite"></div>
+        <div id="chatbotQuickReplies" class="chatbot-quick-replies">
+          <button type="button" class="chatbot-quick-btn" data-q="Lãi suất vay mua nhà hiện tại là bao nhiêu?">Lãi suất vay hiện tại?</button>
+          <button type="button" class="chatbot-quick-btn" data-q="Cần chuẩn bị những giấy tờ gì khi mua nhà?">Cần giấy tờ gì mua nhà?</button>
+          <button type="button" class="chatbot-quick-btn" data-q="Nhà 2 tỷ thì vay được bao nhiêu tiền ngân hàng?">Nhà 2 tỷ vay được bao nhiêu?</button>
+          <button type="button" class="chatbot-quick-btn" data-q="Sổ đỏ khác sổ hồng như thế nào?">Sổ đỏ vs sổ hồng?</button>
+        </div>
+        <form id="chatbotForm" class="chatbot-input-row">
+          <input id="chatbotInput" type="text" placeholder="Nhắn tin hỏi AI môi giới..." autocomplete="off" />
+          <button type="submit" class="chatbot-send-btn" aria-label="Gửi">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
+        </form>
+      </div>
+    </div>
 
     <!-- Nút CTA nổi - Nhận Tư Vấn -->
     <button type="button" id="consultFab" class="consult-fab" aria-label="Nhận tư vấn miễn phí">
