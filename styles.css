@@ -737,6 +737,12 @@ textarea {
   transition: border-color 0.24s ease, box-shadow 0.24s ease, transform 0.24s ease, background 0.24s ease;
 }
 
+/* Ensure native dropdown menu text is readable on mobile browsers */
+select option {
+  color: #111827;
+  background: #ffffff;
+}
+
 select:hover,
 textarea:hover {
   border-color: rgba(79, 209, 255, 0.22);
