@@ -1767,10 +1767,30 @@ input::placeholder {
     overflow: visible;
   }
 
+  .sidebar-section,
+  .project-list,
+  .sidebar-nav,
+  .sidebar-link {
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
   #projectList {
     display: grid;
     grid-template-columns: 1fr;
     gap: 8px;
+    min-height: 64px;
+  }
+
+  #projectList:empty::before {
+    content: 'Chưa có dự án. Bấm + Mới để tạo dự án.';
+    display: block;
+    color: var(--muted);
+    font-size: 0.82rem;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px dashed rgba(79, 209, 255, 0.24);
+    background: rgba(79, 209, 255, 0.06);
   }
 
   .sidebar-nav {
@@ -1780,6 +1800,7 @@ input::placeholder {
   }
 
   .sidebar-link {
+    display: block;
     text-align: center;
   }
 
