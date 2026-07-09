@@ -121,13 +121,18 @@
               </div>
 
               <form id="proposalForm" class="proposal-form">
-                <div class="template-bar">
-                  <span class="template-label">Mẫu nhanh</span>
-                  <div class="template-buttons">
-                    <button type="button" class="template-btn" data-template="web">Thiết kế Web</button>
-                    <button type="button" class="template-btn" data-template="marketing">Marketing</button>
-                    <button type="button" class="template-btn" data-template="photo">Chụp ảnh</button>
-                  </div>
+                <div class="template-search">
+                  <label for="templateSearchInput" class="template-label">Mẫu nhanh</label>
+                  <input
+                    id="templateSearchInput"
+                    class="template-search-input"
+                    type="text"
+                    placeholder="Tìm mẫu nhanh (VD: Web, Marketing, Chụp ảnh...)"
+                    autocomplete="off"
+                    oninput="handleTemplateSearchInput(event)"
+                    onfocus="handleTemplateSearchFocus(event)"
+                  />
+                  <ul id="templateSuggestions" class="template-suggestions" role="listbox" aria-label="Danh sách gợi ý mẫu nhanh"></ul>
                 </div>
 
                 <div class="grid two-cols">

@@ -26,6 +26,8 @@ const discountInput = document.getElementById('discountInput');
 const vatEnabledInput = document.getElementById('vatEnabled');
 const expiryInput = document.getElementById('expiryInput');
 const costInput = document.getElementById('costInput');
+const templateSearchInput = document.getElementById('templateSearchInput');
+const templateSuggestionsList = document.getElementById('templateSuggestions');
 const marginHint = document.getElementById('marginHint');
 const marginValue = document.getElementById('marginValue');
 const marginStatus = document.getElementById('marginStatus');
@@ -1445,33 +1447,75 @@ function updateProposalStatus(id, status) {
   showToast(status === 'Approved' ? 'Báo giá đã được duyệt' : 'Trạng thái đã cập nhật');
 }
 
-function applyTemplate(template) {
-  console.log('applyTemplate called', template);
-  const templates = {
-    web: {
-      projectName: 'Website Thương mại Điện tử',
-      items: [
-        { serviceName: 'Thiết kế Giao diện UI/UX', quantity: 1, unitPrice: 5000000 },
-        { serviceName: 'Lập trình Front-end', quantity: 1, unitPrice: 10000000 },
-      ],
-      toast: '✅ Đã áp dụng mẫu Thiết kế Web',
-    },
-    marketing: {
-      projectName: 'Chiến dịch Marketing',
-      items: [{ serviceName: 'Chạy quảng cáo Facebook/Google', quantity: 1, unitPrice: 4000000 }],
-      toast: '✅ Đã áp dụng mẫu Marketing',
-    },
-    photo: {
-      projectName: 'Chụp ảnh & Làm album',
-      items: [{ serviceName: 'Chụp ảnh & Làm album Kỷ yếu', quantity: 1, unitPrice: 3500000 }],
-      toast: '✅ Đã áp dụng mẫu Chụp ảnh',
-    },
-  };
+const QUICK_TEMPLATES = [
+  {
+    key: 'web',
+    templateName: 'Thiết kế Web',
+    clientName: 'Công ty ABC',
+    projectName: 'Website Thương mại Điện tử',
+    discountPercent: 5,
+    items: [
+      { serviceName: 'Thiết kế Giao diện UI/UX', quantity: 1, unitPrice: 5000000 },
+      { serviceName: 'Lập trình Front-end', quantity: 1, unitPrice: 10000000 },
+    ],
+    toast: '✅ Đã áp dụng mẫu Thiết kế Web',
+  },
+  {
+    key: 'marketing',
+    templateName: 'Marketing',
+    clientName: 'Startup Growth Lab',
+    projectName: 'Chiến dịch Marketing',
+    discountPercent: 8,
+    items: [{ serviceName: 'Chạy quảng cáo Facebook/Google', quantity: 1, unitPrice: 4000000 }],
+    toast: '✅ Đã áp dụng mẫu Marketing',
+  },
+  {
+    key: 'photo',
+    templateName: 'Chụp ảnh',
+    clientName: 'Studio Kỷ Yếu Sáng Tạo',
+    projectName: 'Chụp ảnh & Làm album',
+    discountPercent: 3,
+    items: [{ serviceName: 'Chụp ảnh & Làm album Kỷ yếu', quantity: 1, unitPrice: 3500000 }],
+    toast: '✅ Đã áp dụng mẫu Chụp ảnh',
+  },
+];
 
-  const selected = templates[template];
+function closeTemplateSuggestions() {
+  if (!templateSuggestionsList) return;
+  templateSuggestionsList.classList.remove('show');
+  templateSuggestionsList.innerHTML = '';
+}
+
+function renderTemplateSuggestions(templates) {
+  if (!templateSuggestionsList) return;
+  if (!templates.length) {
+    closeTemplateSuggestions();
+    return;
+  }
+
+  templateSuggestionsList.innerHTML = templates
+    .map((template) => `<li class="template-suggestion-item" role="option" data-template-key="${template.key}">${template.templateName}</li>`)
+    .join('');
+  templateSuggestionsList.classList.add('show');
+}
+
+function filterTemplatesByKeyword(keyword) {
+  const normalizedKeyword = keyword.trim().toLowerCase();
+  if (!normalizedKeyword) return [];
+  return QUICK_TEMPLATES.filter((template) => template.templateName.toLowerCase().includes(normalizedKeyword));
+}
+
+function applyTemplate(templateKey) {
+  const selected = QUICK_TEMPLATES.find((template) => template.key === templateKey);
   if (!selected) return;
 
+  if (templateSearchInput) {
+    templateSearchInput.value = selected.templateName;
+  }
+  clientNameInput.value = selected.clientName;
   projectNameInput.value = selected.projectName;
+  discountInput.value = String(selected.discountPercent);
+
   itemsContainer.innerHTML = '';
   selected.items.forEach((item) => {
     const row = createItemRow(item);
@@ -1481,8 +1525,29 @@ function applyTemplate(template) {
 
   updateTotals();
   renderPreview();
+  closeTemplateSuggestions();
   showToast(selected.toast);
 }
+
+function handleTemplateSearchInput() {
+  if (!templateSearchInput) return;
+  const keyword = templateSearchInput.value;
+  const matchedTemplates = filterTemplatesByKeyword(keyword);
+  renderTemplateSuggestions(matchedTemplates);
+}
+
+function handleTemplateSearchFocus() {
+  if (!templateSearchInput) return;
+  const keyword = templateSearchInput.value;
+  if (!keyword.trim()) {
+    closeTemplateSuggestions();
+    return;
+  }
+  renderTemplateSuggestions(filterTemplatesByKeyword(keyword));
+}
+
+window.handleTemplateSearchInput = handleTemplateSearchInput;
+window.handleTemplateSearchFocus = handleTemplateSearchFocus;
 
 function startCountdown() {
   const expiry = expiryInput.value;
@@ -1542,12 +1607,20 @@ function bindEvents() {
     addItemBtn.addEventListener('click', () => addItemRow());
   }
 
-  const templateBar = document.querySelector('.template-buttons');
-  if (templateBar) {
-    templateBar.addEventListener('click', (event) => {
-      const button = event.target.closest('.template-btn');
-      if (!button) return;
-      applyTemplate(button.dataset.template);
+  if (templateSuggestionsList) {
+    templateSuggestionsList.addEventListener('click', (event) => {
+      const item = event.target.closest('[data-template-key]');
+      if (!item?.dataset.templateKey) return;
+      applyTemplate(item.dataset.templateKey);
+    });
+  }
+
+  if (templateSearchInput) {
+    templateSearchInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        closeTemplateSuggestions();
+        templateSearchInput.blur();
+      }
     });
   }
 
@@ -1594,6 +1667,12 @@ function bindEvents() {
     if (event.target.closest('.project-actions')) return;
     openProjectMenuId = null;
     renderProjectList();
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!templateSearchInput || !templateSuggestionsList) return;
+    if (event.target.closest('.template-search')) return;
+    closeTemplateSuggestions();
   });
 
   if (newProjectBtn) {
