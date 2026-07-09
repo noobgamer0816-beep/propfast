@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <link rel="icon" href="favicon.ico.jpg?v=2" />
+    <link rel="shortcut icon" href="favicon.ico.jpg?v=2" />
+    <link rel="apple-touch-icon" href="favicon.ico.jpg?v=2" />
+  
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="PropFast giúp bạn tạo, quản lý và gửi báo giá chuyên nghiệp với dashboard theo dõi trạng thái theo thời gian thực."
+    />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://formspree.io; object-src 'none'; base-uri 'self'; form-action 'self' https://formspree.io; frame-ancestors 'none'"
+    />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="theme-color" content="#060b14" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="vi_VN" />
+    <meta property="og:title" content="PropFast | Premium Proposal Workspace" />
+    <meta
+      property="og:description"
+      content="Tạo báo giá nhanh, theo dõi trạng thái draft/sent/approved và tối ưu biên lợi nhuận trong một workspace."
+    />
+    <meta property="og:url" content="http://127.0.0.1:8000/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="PropFast | Premium Proposal Workspace" />
+    <meta
+      name="twitter:description"
+      content="Tạo và quản lý báo giá hiện đại với dashboard và preview theo thời gian thực."
+    />
+    <title>PropFast | Premium Proposal Workspace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app-shell" class="app-shell">
+      <div class="dashboard-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-badge">
+              <img src="favicon.ico.jpg" alt="PropFast logo" />
+            </div>
+            <div>
+              <h1>PropFast</h1>
+              <p>Proposal OS</p>
+            </div>
+          </div>
+
+          <div class="sidebar-section">
+            <div class="sidebar-section-head">
+              <p class="sidebar-label">Dự án đang chạy</p>
+              <button type="button" class="ghost-pill">+ Mới</button>
+            </div>
+            <div id="projectList" class="project-list"></div>
+          </div>
+
+          <div class="sidebar-section">
+            <p class="sidebar-label">Không gian làm việc</p>
+            <nav class="sidebar-nav" aria-label="Điều hướng khu vực làm việc">
+              <a href="#workspaceClients" class="sidebar-link active" data-workspace-link="clients">Quản lý khách hàng</a>
+              <a href="#dashboardPanel" class="sidebar-link" data-workspace-link="sent">Báo giá đã gửi</a>
+              <a href="#insightsPanel" class="sidebar-link" data-workspace-link="cadence">Cài đặt hệ thống</a>
+            </nav>
+          </div>
+
+          <div class="sidebar-foot">
+            <div class="mini-card">
+              <p class="eyebrow">Next move</p>
+              <strong>Chốt thêm 3 deal</strong>
+              <p>Biên lợi nhuận trung bình đang tăng 12% tuần này.</p>
+            </div>
+          </div>
+        </aside>
+
+        <main class="editor-column">
+          <header class="editor-header">
+            <div>
+              <p class="eyebrow">Proposal Studio</p>
+              <h2>BÁO GIÁ ĐANG CHỈNH SỬA</h2>
+            </div>
+            <div class="header-meta">
+              <span class="live-pill">Đang chỉnh sửa</span>
+              <button type="button" id="saveBtn" class="btn btn-primary">Lưu báo giá</button>
+            </div>
+          </header>
+
+          <section class="editor-stack">
+            <article id="workspaceClients" class="editor-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="panel-kicker">01</p>
+                  <h3>Khách hàng</h3>
+                </div>
+                <span class="chip chip-info">Hồ sơ khách hàng</span>
+              </div>
+
+              <form id="proposalForm" class="proposal-form">
+                <div class="template-bar">
+                  <span class="template-label">Mẫu nhanh</span>
+                  <div class="template-buttons">
+                    <button type="button" class="template-btn" data-template="web">Thiết kế Web</button>
+                    <button type="button" class="template-btn" data-template="marketing">Marketing</button>
+                    <button type="button" class="template-btn" data-template="photo">Chụp ảnh</button>
+                  </div>
+                </div>
+
+                <div class="grid two-cols">
+                  <label class="field">
+                    <span>Tên khách hàng</span>
+                    <input id="clientName" type="text" placeholder="Ví dụ: Công ty ABC" required />
+                  </label>
+                  <label class="field">
+                    <span>Tên dự án</span>
+                    <input id="projectName" type="text" placeholder="Ví dụ: Website thương mại" required />
+                  </label>
+                </div>
+
+                <div class="options-row">
+                  <label class="field compact-field">
+                    <span>% Giảm giá</span>
+                    <input id="discountInput" type="number" min="0" max="100" value="0" />
+                  </label>
+                  <label class="field compact-field">
+                    <span>Hạn chót báo giá</span>
+                    <input id="expiryInput" type="date" />
+                  </label>
+                  <label class="switch-field">
+                    <span id="vatToggleLabel">VAT 10%</span>
+                    <input id="vatEnabled" type="checkbox" checked />
+                  </label>
+                </div>
+              </form>
+            </article>
+
+            <article class="editor-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="panel-kicker">02</p>
+                  <h3>Hạng mục</h3>
+                </div>
+                <span class="chip chip-success">Giá linh hoạt</span>
+              </div>
+
+              <div class="panel-actions">
+                <button type="button" id="addItemBtn" class="btn btn-ghost">+ Thêm hạng mục</button>
+              </div>
+
+              <div id="itemsContainer" class="items-list"></div>
+
+              <div class="totals-card">
+                <div class="total-amount-card">
+                  <span>Tổng tiền</span>
+                  <strong id="totalAmount">0 ₫</strong>
+                </div>
+                <label class="field compact-field">
+                  <span>Chi phí gốc ước tính</span>
+                  <input id="costInput" type="number" min="0" value="0" />
+                </label>
+              </div>
+            </article>
+
+            <article class="editor-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="panel-kicker">03</p>
+                  <h3>Xem trước</h3>
+                </div>
+                <span class="chip chip-warning">Xem trước trực tiếp</span>
+              </div>
+              <div id="proposalPreviewInline" class="proposal-preview"></div>
+            </article>
+          </section>
+        </main>
+
+        <aside class="analytics-column">
+          <div id="insightsPanel" class="analytics-card">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">Góc nhìn khách hàng</p>
+                <h3>Xem trước & gửi đi</h3>
+              </div>
+            </div>
+            <div id="proposalPreview" class="proposal-preview"></div>
+            <div class="action-row">
+              <button type="button" id="copyLinkBtn" class="btn btn-secondary">Gửi link</button>
+              <button type="button" id="exportPdfBtn" class="btn btn-ghost">Xuất PDF</button>
+            </div>
+          </div>
+
+          <div class="analytics-card">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">Phân tích</p>
+                <h3>Biên lợi nhuận</h3>
+              </div>
+            </div>
+            <div class="margin-widget">
+              <div id="marginValue" class="metric-value">0%</div>
+              <div id="marginStatus" class="metric-status">Cần tăng biên lợi nhuận</div>
+              <div class="metric-grid">
+                <div>
+                  <span class="metric-label">Tổng</span>
+                  <strong id="metricTotal">0₫</strong>
+                </div>
+                <div>
+                  <span class="metric-label">Chi phí</span>
+                  <strong id="metricCost">0₫</strong>
+                </div>
+                <div>
+                  <span class="metric-label">Lợi nhuận</span>
+                  <strong id="metricNet">0₫</strong>
+                </div>
+              </div>
+              <div id="marginHint" class="margin-hint safe">Biên lợi nhuận: 0%</div>
+            </div>
+          </div>
+
+          <div id="dashboardPanel" class="analytics-card dashboard-card">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">Bảng điều khiển</p>
+                <h3>Bảng quản lý</h3>
+              </div>
+            </div>
+
+            <div class="dashboard-summary">
+              <div class="dashboard-summary-copy">
+                <p class="eyebrow">Tóm tắt phân tích</p>
+                <h4>Tổng quan xu hướng</h4>
+                <p>Giữ mắt trên các báo giá đang chờ phản hồi.</p>
+              </div>
+              <div class="sparkline-card">
+                <svg viewBox="0 0 200 50" width="100%" height="50" aria-label="sparkline">
+                  <polyline points="0,40 30,35 60,45 90,20 120,25 150,10 180,15 200,5" />
+                </svg>
+              </div>
+            </div>
+
+            <div class="dashboard-summary-stats">
+              <div class="dashboard-summary-stat">
+                <span>Tổng</span>
+                <strong id="summaryAll">0</strong>
+              </div>
+              <div class="dashboard-summary-stat">
+                <span>Nháp</span>
+                <strong id="summaryDraft">0</strong>
+              </div>
+              <div class="dashboard-summary-stat">
+                <span>Đã gửi</span>
+                <strong id="summarySent">0</strong>
+              </div>
+              <div class="dashboard-summary-stat">
+                <span>Đã duyệt</span>
+                <strong id="summaryApproved">0</strong>
+              </div>
+            </div>
+
+            <div class="filter-row" role="tablist" aria-label="Lọc báo giá">
+              <button type="button" class="filter-chip active" data-filter="all">Tất cả</button>
+              <button type="button" class="filter-chip" data-filter="Draft">Nháp</button>
+              <button type="button" class="filter-chip" data-filter="Sent">Đã gửi</button>
+              <button type="button" class="filter-chip" data-filter="Approved">Đã duyệt</button>
+            </div>
+
+            <div id="savedProposalsList" class="saved-list"></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <div id="settings-modal" class="settings-modal" aria-hidden="true">
+      <div class="settings-backdrop" data-close-settings="true"></div>
+      <section class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" tabindex="-1">
+        <header class="settings-header">
+          <div>
+            <p class="eyebrow">Điều khiển hệ thống</p>
+            <h2 id="settingsTitle">Cấu hình hệ thống PropFast</h2>
+          </div>
+          <button type="button" id="closeSettingsBtn" class="modal-close-btn" aria-label="Đóng cài đặt">×</button>
+        </header>
+
+        <div class="settings-content">
+          <section class="settings-section">
+            <div class="settings-section-head">
+              <p class="panel-kicker">01</p>
+              <h3>Thông tin người gửi mặc định</h3>
+            </div>
+            <div class="settings-sender-grid">
+              <label class="field">
+                <span>Tên thương hiệu / Studio</span>
+                <input id="settingsBrandName" type="text" placeholder="Ví dụ: PropFast Studio" />
+              </label>
+              <label class="field">
+                <span>Số điện thoại</span>
+                <input id="settingsPhone" type="text" placeholder="Ví dụ: 0909 123 456" />
+              </label>
+              <label class="field settings-field-full">
+                <span>Số tài khoản ngân hàng - STK</span>
+                <input id="settingsBankAccount" type="text" placeholder="Ví dụ: 123456789 - ACB - NGUYEN VAN A" />
+              </label>
+            </div>
+          </section>
+
+          <section class="settings-section">
+            <div class="settings-section-head">
+              <p class="panel-kicker">02</p>
+              <h3>Thông số tài chính mặc định</h3>
+            </div>
+            <div class="grid two-cols settings-grid settings-grid-wide">
+              <label class="field">
+                <span>% Thuế VAT mặc định</span>
+                <input id="settingsVatPercent" type="number" min="0" max="100" step="1" value="10" />
+              </label>
+              <label class="field">
+                <span>% Chiết khấu mặc định</span>
+                <input id="settingsDiscountPercent" type="number" min="0" max="100" step="1" value="0" />
+              </label>
+              <label class="field settings-field-full">
+                <span>Đơn vị tiền tệ</span>
+                <select id="settingsCurrency">
+                  <option value="VND">VND</option>
+                  <option value="USD">USD</option>
+                </select>
+              </label>
+            </div>
+          </section>
+
+          <section class="settings-section">
+            <div class="settings-section-head">
+              <p class="panel-kicker">03</p>
+              <h3>Điều khoản dịch vụ nhanh</h3>
+            </div>
+            <label class="field">
+              <span>Điều khoản mặc định</span>
+              <textarea id="settingsServiceTerms" rows="5" placeholder="Ví dụ: Tạm ứng 50% trước khi làm&#10;Báo giá có hiệu lực trong 14 ngày"></textarea>
+            </label>
+          </section>
+
+          <section class="settings-section">
+            <div class="settings-section-head">
+              <p class="panel-kicker">04</p>
+              <h3>Giao diện</h3>
+            </div>
+            <div class="settings-switch-stack">
+              <label class="switch-field settings-switch-field">
+                <span>Light Mode / Dark Mode</span>
+                <input id="settingsLightMode" type="checkbox" />
+              </label>
+            </div>
+          </section>
+
+          <section class="settings-section">
+            <div class="settings-section-head">
+              <p class="panel-kicker">05</p>
+              <h3>Thông báo Real-time</h3>
+            </div>
+            <div class="settings-switch-stack">
+              <label class="switch-field settings-switch-field">
+                <span>Âm thanh Ting khi có Toast notification</span>
+                <input id="settingsToastSound" type="checkbox" checked />
+              </label>
+              <label class="switch-field settings-switch-field">
+                <span>Giả lập khách hàng xem trực tiếp</span>
+                <input id="settingsLiveSimulation" type="checkbox" />
+              </label>
+            </div>
+          </section>
+        </div>
+
+        <footer class="settings-footer">
+          <p id="settingsUnsavedHint" class="settings-unsaved-hint" aria-live="polite"></p>
+          <button type="button" id="cancelSettingsBtn" class="btn btn-secondary">Hủy</button>
+          <button type="button" id="saveSettingsBtn" class="btn btn-primary settings-save-btn">Lưu cấu hình</button>
+        </footer>
+      </section>
+    </div>
+
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- Nút CTA nổi - Nhận Tư Vấn -->
+    <button type="button" id="consultFab" class="consult-fab" aria-label="Nhận tư vấn miễn phí">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+      <span>Nhận Tư Vấn</span>
+    </button>
+
+    <!-- Modal form tư vấn -->
+    <div id="consult-modal" class="settings-modal consult-modal" aria-hidden="true">
+      <div class="settings-backdrop" id="consultBackdrop"></div>
+      <section class="settings-dialog consult-dialog" role="dialog" aria-modal="true" aria-labelledby="consultTitle" tabindex="-1">
+        <header class="settings-header">
+          <div>
+            <p class="eyebrow">Hoàn toàn miễn phí</p>
+            <h2 id="consultTitle">Nhận Tư Vấn Ngay 🔥</h2>
+          </div>
+          <button type="button" id="closeConsultBtn" class="modal-close-btn" aria-label="Đóng form tư vấn">×</button>
+        </header>
+        <div class="settings-content">
+          <p class="consult-subtitle">Điền thông tin bên dưới — chúng tôi sẽ liên hệ với bạn trong <strong>30 phút</strong>.</p>
+          <form id="consultForm" class="consult-form" novalidate>
+            <!-- Honeypot anti-spam (ẩn với người dùng) -->
+            <input type="text" name="_honeypot" style="display:none" tabindex="-1" autocomplete="off" aria-hidden="true" />
+            <div class="consult-field">
+              <label for="consultName">Họ và Tên <span class="consult-required">*</span></label>
+              <input id="consultName" name="name" type="text" placeholder="Ví dụ: Nguyễn Văn A" autocomplete="name" />
+              <span class="consult-field-error" id="consultNameErr" role="alert"></span>
+            </div>
+            <div class="consult-field">
+              <label for="consultPhone">Số Điện Thoại <span class="consult-required">*</span></label>
+              <input id="consultPhone" name="phone" type="tel" placeholder="Ví dụ: 0901 234 567" autocomplete="tel" />
+              <span class="consult-field-error" id="consultPhoneErr" role="alert"></span>
+            </div>
+            <div class="consult-field">
+              <label for="consultNeed">Nhu Cầu <span class="consult-required">*</span></label>
+              <select id="consultNeed" name="need">
+                <option value="">— Chọn nhu cầu của bạn —</option>
+                <option value="Mua nhà">🏠 Mua nhà</option>
+                <option value="Thuê nhà">🔑 Thuê nhà</option>
+                <option value="Đầu tư bất động sản">💰 Đầu tư bất động sản</option>
+                <option value="Tư vấn định giá">📊 Tư vấn định giá</option>
+                <option value="Khác">💬 Khác</option>
+              </select>
+              <span class="consult-field-error" id="consultNeedErr" role="alert"></span>
+            </div>
+            <div id="consultResult" class="consult-result" aria-live="polite"></div>
+            <button type="submit" id="consultSubmitBtn" class="btn consult-submit-btn">
+              Nhận Tư Vấn Ngay 🔥
+            </button>
+          </form>
+        </div>
+      </section>
+    </div>
+
+    <script src="app.js?v=propfast-20260709-1" defer></script>
+  </body>
+</html>

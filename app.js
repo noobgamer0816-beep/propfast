@@ -1723,3 +1723,153 @@ if (document.readyState === 'loading') {
 } else {
   init();
 }
+
+/* ============================================================
+   CONSULTATION FORM — Formspree Integration
+   ============================================================
+   Hướng dẫn thiết lập:
+   1. Đăng ký tại https://formspree.io (miễn phí)
+   2. Tạo form mới → lấy endpoint dạng: https://formspree.io/f/xxxxxxxx
+   3. Thay chuỗi 'YOUR_FORMSPREE_ID' bên dưới bằng ID thực của bạn
+   ============================================================ */
+const FORMSPREE_ENDPOINT = 'https://formspree.io/f/YOUR_FORMSPREE_ID';
+
+const consultFab       = document.getElementById('consultFab');
+const consultModal     = document.getElementById('consult-modal');
+const closeConsultBtn  = document.getElementById('closeConsultBtn');
+const consultBackdrop  = document.getElementById('consultBackdrop');
+const consultForm      = document.getElementById('consultForm');
+const consultSubmitBtn = document.getElementById('consultSubmitBtn');
+const consultResultEl  = document.getElementById('consultResult');
+
+function openConsultModal() {
+  if (!consultModal) return;
+  consultModal.classList.add('show-modal');
+  consultModal.setAttribute('aria-hidden', 'false');
+  const dialog = consultModal.querySelector('.consult-dialog');
+  if (dialog) dialog.focus();
+}
+
+function closeConsultModal() {
+  if (!consultModal) return;
+  consultModal.classList.remove('show-modal');
+  consultModal.setAttribute('aria-hidden', 'true');
+  if (consultResultEl) {
+    consultResultEl.textContent = '';
+    consultResultEl.className = 'consult-result';
+  }
+}
+
+function setConsultFieldError(inputEl, errorEl, message) {
+  if (errorEl) errorEl.textContent = message;
+  if (inputEl) inputEl.style.borderColor = message ? 'var(--danger)' : '';
+}
+
+function validateConsultForm() {
+  const nameEl  = document.getElementById('consultName');
+  const phoneEl = document.getElementById('consultPhone');
+  const needEl  = document.getElementById('consultNeed');
+  const VN_PHONE_RE = /^(0[35789]\d{8})$/;
+
+  let valid = true;
+
+  const nameVal = nameEl ? nameEl.value.trim() : '';
+  if (!nameVal) {
+    setConsultFieldError(nameEl, document.getElementById('consultNameErr'), 'Vui lòng nhập họ tên');
+    valid = false;
+  } else if (nameVal.length < 2) {
+    setConsultFieldError(nameEl, document.getElementById('consultNameErr'), 'Họ tên cần ít nhất 2 ký tự');
+    valid = false;
+  } else {
+    setConsultFieldError(nameEl, document.getElementById('consultNameErr'), '');
+  }
+
+  const phoneVal = phoneEl ? phoneEl.value.replace(/\s/g, '') : '';
+  if (!phoneVal) {
+    setConsultFieldError(phoneEl, document.getElementById('consultPhoneErr'), 'Vui lòng nhập số điện thoại');
+    valid = false;
+  } else if (!VN_PHONE_RE.test(phoneVal)) {
+    setConsultFieldError(phoneEl, document.getElementById('consultPhoneErr'), 'Số điện thoại không hợp lệ (VD: 0901234567)');
+    valid = false;
+  } else {
+    setConsultFieldError(phoneEl, document.getElementById('consultPhoneErr'), '');
+  }
+
+  const needVal = needEl ? needEl.value : '';
+  if (!needVal) {
+    setConsultFieldError(needEl, document.getElementById('consultNeedErr'), 'Vui lòng chọn nhu cầu');
+    valid = false;
+  } else {
+    setConsultFieldError(needEl, document.getElementById('consultNeedErr'), '');
+  }
+
+  return valid;
+}
+
+async function handleConsultSubmit(event) {
+  event.preventDefault();
+  if (!validateConsultForm()) return;
+
+  const nameVal = document.getElementById('consultName').value.trim();
+  const originalLabel = consultSubmitBtn.textContent;
+
+  consultSubmitBtn.textContent = '⏳ Đang gửi...';
+  consultSubmitBtn.disabled = true;
+  consultResultEl.textContent = '';
+  consultResultEl.className = 'consult-result';
+
+  try {
+    const response = await fetch(FORMSPREE_ENDPOINT, {
+      method: 'POST',
+      body: new FormData(consultForm),
+      headers: { Accept: 'application/json' },
+    });
+
+    if (response.ok) {
+      consultResultEl.textContent = `✅ Cảm ơn ${nameVal}! Chúng tôi sẽ gọi cho bạn trong 30 phút.`;
+      consultResultEl.className = 'consult-result success';
+      consultForm.reset();
+      showToast(`📞 Lead mới: ${nameVal} vừa đăng ký tư vấn!`);
+      setTimeout(closeConsultModal, 3400);
+    } else {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || 'server_error');
+    }
+  } catch {
+    consultResultEl.textContent = '❌ Có lỗi xảy ra. Vui lòng thử lại hoặc gọi hotline trực tiếp.';
+    consultResultEl.className = 'consult-result error';
+  } finally {
+    consultSubmitBtn.textContent = originalLabel;
+    consultSubmitBtn.disabled = false;
+  }
+}
+
+// --- Bind events ---
+if (consultFab) {
+  consultFab.addEventListener('click', openConsultModal);
+}
+if (closeConsultBtn) {
+  closeConsultBtn.addEventListener('click', closeConsultModal);
+}
+if (consultBackdrop) {
+  consultBackdrop.addEventListener('click', closeConsultModal);
+}
+if (consultForm) {
+  consultForm.addEventListener('submit', handleConsultSubmit);
+
+  // Xóa lỗi ngay khi user bắt đầu nhập lại
+  consultForm.querySelectorAll('input, select').forEach((el) => {
+    el.addEventListener('input', () => {
+      el.style.borderColor = '';
+      const errEl = document.getElementById(el.id + 'Err');
+      if (errEl) errEl.textContent = '';
+    });
+  });
+}
+
+// Đóng modal bằng phím ESC
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && consultModal && consultModal.classList.contains('show-modal')) {
+    closeConsultModal();
+  }
+});
