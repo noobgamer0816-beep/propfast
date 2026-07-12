@@ -54,7 +54,6 @@ body,
 .project-item,
 .saved-item,
 .mini-card,
-.template-search-input,
 .dashboard-summary-stat,
 .sparkline-card,
 .countdown-card,
@@ -818,7 +817,6 @@ body.light-theme .project-item,
 body.light-theme .saved-item,
 body.light-theme .settings-section,
 body.light-theme .mini-card,
-body.light-theme .template-search-input,
 body.light-theme .dashboard-summary-stat,
 body.light-theme .sparkline-card,
 body.light-theme .countdown-item,
@@ -924,6 +922,11 @@ body.light-theme .template-suggestion-item {
 }
 
 body.light-theme .template-suggestion-item:hover {
+  color: #2168e2;
+}
+
+body.light-theme .template-suggestion-item.active {
+  background: rgba(25, 191, 255, 0.2);
   color: #2168e2;
 }
 
@@ -1114,7 +1117,7 @@ body.light-theme .config-placeholder {
 .editor-panel {
   padding: 20px 20px 22px;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .panel-head {
@@ -1250,78 +1253,6 @@ input::placeholder {
   color: #66768f;
 }
 
-.template-label {
-  color: var(--muted);
-  font-size: 0.92rem;
-  font-weight: 600;
-}
-
-.template-search {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.template-search-input {
-  width: 100%;
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 14px;
-  padding: 12px 14px;
-  background: #111827;
-  color: #f8fafc;
-  outline: none;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.template-search-input::placeholder {
-  color: #94a3b8;
-}
-
-.template-search-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
-}
-
-.template-suggestions {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  right: 0;
-  z-index: 40;
-  list-style: none;
-  margin: 0;
-  padding: 8px;
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 14px;
-  background: #111827;
-  box-shadow: 0 14px 34px rgba(2, 8, 18, 0.52);
-  max-height: 220px;
-  overflow-y: auto;
-  display: none;
-}
-
-.template-suggestions.show {
-  display: block;
-}
-
-.template-suggestion-item {
-  padding: 10px 12px;
-  border-radius: 10px;
-  cursor: pointer;
-  color: #cbd5e1;
-  font-size: 0.88rem;
-  border: 1px solid transparent;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.template-suggestion-item:hover {
-  background: rgba(59, 130, 246, 0.14);
-  color: #3b82f6;
-  border-color: rgba(59, 130, 246, 0.24);
-}
-
 .grid.two-cols {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1329,20 +1260,23 @@ input::placeholder {
 }
 
 .options-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
   gap: 12px;
-  flex-wrap: wrap;
   align-items: end;
 }
 
 .compact-field {
-  max-width: 180px;
+  width: 100%;
+  max-width: none;
 }
 
 .switch-field {
   display: inline-flex;
   align-items: center;
+  justify-self: end;
   gap: 10px;
+  min-height: 48px;
   padding: 10px 12px;
   border-radius: 14px;
   background: rgba(255,255,255,0.03);
@@ -1406,7 +1340,7 @@ input::placeholder {
   transform: translateY(10px);
   max-height: 0;
   overflow: hidden;
-  transition: all 0.28s cubic-bezier(0.2, 0.83, 0.2, 1);
+  transition: max-height 0.01s linear, opacity 0.28s cubic-bezier(0.2, 0.83, 0.2, 1), transform 0.28s cubic-bezier(0.2, 0.83, 0.2, 1);
 }
 
 .item-row.is-visible {
@@ -1432,6 +1366,12 @@ input::placeholder {
   grid-template-rows: auto 44px 20px;
   align-items: start;
   gap: 8px;
+}
+
+.item-row label::after {
+  content: '';
+  display: block;
+  min-height: 20px;
 }
 
 .item-row label span {
@@ -1909,6 +1849,9 @@ input::placeholder {
 }
 
 .remove-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: linear-gradient(180deg, rgba(255, 112, 134, 0.2), rgba(255, 112, 134, 0.1));
   color: var(--danger);
   border: 1px solid rgba(255, 112, 134, 0.38);
@@ -1923,7 +1866,7 @@ input::placeholder {
 
 .item-row .remove-btn {
   align-self: start;
-  margin-top: 32px;
+  margin-top: 24px;
 }
 
 .remove-btn:hover {
@@ -2376,22 +2319,12 @@ body.light-theme .preview-table tbody tr:hover {
     flex-wrap: wrap;
   }
 
-  .options-row,
-  .template-search {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
   .summary-panel {
     width: 100%;
   }
 
   .margin-card {
     width: 100%;
-  }
-
-  .grid.two-cols {
-    grid-template-columns: 1fr;
   }
 
   .item-row {

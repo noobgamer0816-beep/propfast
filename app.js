@@ -26,8 +26,6 @@ const discountInput = document.getElementById('discountInput');
 const vatEnabledInput = document.getElementById('vatEnabled');
 const expiryInput = document.getElementById('expiryInput');
 const costInput = document.getElementById('costInput');
-const templateSearchInput = document.getElementById('templateSearchInput');
-const templateSuggestionsList = document.getElementById('templateSuggestions');
 const marginHint = document.getElementById('marginHint');
 const marginValue = document.getElementById('marginValue');
 const marginStatus = document.getElementById('marginStatus');
@@ -554,6 +552,17 @@ function animateValue(element, start, end, duration = 280, formatter = formatCur
   requestAnimationFrame(step);
 }
 
+function alignRemoveButton(row) {
+  const serviceLabel = row.querySelector('.service-field');
+  const serviceInput = serviceLabel?.querySelector('.service-name');
+  const btn = row.querySelector('.remove-btn');
+  if (serviceInput && btn) {
+    const labelRect = serviceLabel.getBoundingClientRect();
+    const inputRect = serviceInput.getBoundingClientRect();
+    btn.style.marginTop = (inputRect.top - labelRect.top) + 'px';
+  }
+}
+
 function createItemRow(item = {}) {
   const row = document.createElement('div');
   row.className = 'item-row';
@@ -640,13 +649,19 @@ function initItems() {
   itemsContainer.innerHTML = '';
   const row = createItemRow();
   itemsContainer.appendChild(row);
-  requestAnimationFrame(() => row.classList.add('is-visible'));
+  requestAnimationFrame(() => {
+    row.classList.add('is-visible');
+    requestAnimationFrame(() => alignRemoveButton(row));
+  });
 }
 
 function addItemRow(item = {}) {
   const row = createItemRow(item);
   itemsContainer.appendChild(row);
-  requestAnimationFrame(() => row.classList.add('is-visible'));
+  requestAnimationFrame(() => {
+    row.classList.add('is-visible');
+    requestAnimationFrame(() => alignRemoveButton(row));
+  });
   updateTotals();
   renderPreview();
   showToast('Đã thêm hạng mục mới');
@@ -863,6 +878,12 @@ function buildPreviewMarkup(current) {
     ${current.expiry ? `
       <div class="countdown-card">
         <div class="countdown-title">Hết hạn báo giá</div>
+        <div class="countdown-grid">
+          <div class="countdown-item"><strong class="countdown-days">0</strong><span>Ngày</span></div>
+          <div class="countdown-item"><strong class="countdown-hours">0</strong><span>Giờ</span></div>
+          <div class="countdown-item"><strong class="countdown-minutes">0</strong><span>Phút</span></div>
+          <div class="countdown-item"><strong class="countdown-seconds">0</strong><span>Giây</span></div>
+        </div>
         <div class="countdown-note">Ngày hết hạn: ${new Date(current.expiry).toLocaleDateString('vi-VN')}</div>
       </div>
     ` : ''}
@@ -878,232 +899,445 @@ function exportProposalAsPdf() {
     return;
   }
 
+  const createdAtLabel = current.createdAt ? new Date(current.createdAt).toLocaleDateString('vi-VN') : 'Chưa lưu';
+  const expiryLabel = current.expiry ? new Date(current.expiry).toLocaleDateString('vi-VN') : 'Chưa đặt';
   const printMarkup = `
     <!DOCTYPE html>
     <html lang="vi">
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>${escapeHtml(current.projectName || 'Bao gia')} | PDF</title>
+        <title>${escapeHtml(current.projectName || 'Báo giá')} | PDF</title>
         <style>
           :root {
-            --ink: #111827;
-            --muted: #6b7280;
-            --line: #dbe3f0;
-            --soft: #f6f9fc;
+            --ink: #0f172a;
+            --muted: #64748b;
+            --line: #d7e0ea;
+            --surface: #f7fafc;
             --brand: #0f6fff;
+            --brand-soft: #eaf2ff;
+            --success: #0f9d58;
           }
 
           * { box-sizing: border-box; }
+
+          html, body { margin: 0; padding: 0; }
+
           body {
-            margin: 0;
-            font-family: "Segoe UI", Arial, sans-serif;
+            font-family: Inter, "Segoe UI", Arial, sans-serif;
             color: var(--ink);
             background: #eef3f8;
-            padding: 32px;
+            padding: 24px;
           }
-          .print-sheet {
-            max-width: 900px;
+
+          .sheet {
+            max-width: 960px;
             margin: 0 auto;
             background: #fff;
-            border-radius: 24px;
-            padding: 40px;
-            box-shadow: 0 18px 60px rgba(15, 23, 42, 0.08);
+            border: 1px solid rgba(15, 23, 42, 0.06);
+            border-radius: 28px;
+            overflow: hidden;
+            box-shadow: 0 24px 80px rgba(15, 23, 42, 0.12);
           }
-          .print-head {
-            display: flex;
-            justify-content: space-between;
-            gap: 24px;
-            align-items: flex-start;
-            padding-bottom: 20px;
+
+          .hero {
+            padding: 28px 32px 24px;
+            background:
+              linear-gradient(135deg, rgba(15, 111, 255, 0.12), rgba(15, 157, 88, 0.08)),
+              linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
             border-bottom: 1px solid var(--line);
           }
-          .brand-mark {
-            font-size: 13px;
-            letter-spacing: 0.18em;
-            text-transform: uppercase;
-            color: var(--brand);
-            font-weight: 700;
-            margin: 0 0 12px;
+
+          .hero-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 20px;
           }
-          h1 {
+
+          .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+          }
+
+          .brand-badge {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--brand), #68b0ff);
+            color: #fff;
+            display: grid;
+            place-items: center;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+          }
+
+          .brand-name {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: var(--brand);
+            font-weight: 800;
+            margin: 0;
+          }
+
+          .title {
             margin: 0;
             font-size: 30px;
-            line-height: 1.2;
+            line-height: 1.15;
+            letter-spacing: -0.03em;
           }
-          .status-badge {
-            white-space: nowrap;
+
+          .subtitle {
+            margin: 10px 0 0;
+            color: var(--muted);
+            max-width: 56ch;
+            line-height: 1.55;
+          }
+
+          .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
             border-radius: 999px;
-            background: #e8f1ff;
+            padding: 9px 14px;
+            background: var(--brand-soft);
             color: var(--brand);
-            padding: 8px 14px;
-            font-weight: 700;
             font-size: 13px;
+            font-weight: 800;
+            white-space: nowrap;
           }
+
           .meta-grid {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 14px;
-            margin: 24px 0 28px;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            padding: 22px 32px 0;
           }
+
           .meta-card {
             border: 1px solid var(--line);
-            border-radius: 16px;
+            background: var(--surface);
+            border-radius: 18px;
             padding: 14px 16px;
-            background: var(--soft);
+            min-height: 86px;
           }
-          .meta-card span {
+
+          .meta-card span,
+          .section-kicker,
+          .table-head {
+            display: block;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 8px;
+            font-weight: 700;
+          }
+
+          .meta-card strong {
+            display: block;
+            font-size: 15px;
+            line-height: 1.45;
+          }
+
+          .content {
+            padding: 22px 32px 32px;
+          }
+
+          .summary-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 18px;
+          }
+
+          .summary-card {
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            padding: 16px 18px;
+            background: linear-gradient(180deg, #fff, #fbfdff);
+          }
+
+          .summary-card.main {
+            background: linear-gradient(135deg, rgba(15, 111, 255, 0.08), rgba(15, 157, 88, 0.06));
+            border-color: rgba(15, 111, 255, 0.16);
+          }
+
+          .summary-card span {
             display: block;
             color: var(--muted);
             font-size: 12px;
+            margin-bottom: 8px;
             text-transform: uppercase;
-            letter-spacing: 0.08em;
-            margin-bottom: 6px;
+            letter-spacing: 0.1em;
+            font-weight: 700;
           }
-          .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 12px;
-            margin: 0 0 24px;
-          }
-          .summary-card {
-            border: 1px solid var(--line);
-            border-radius: 16px;
-            padding: 14px 16px;
-          }
+
           .summary-card strong {
             display: block;
-            font-size: 20px;
-            margin-top: 4px;
+            font-size: 22px;
+            line-height: 1.15;
           }
+
+          .summary-card.main strong {
+            color: var(--brand);
+            font-size: 28px;
+          }
+
+          .table-shell {
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            overflow: hidden;
+            margin-top: 18px;
+          }
+
           table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 6px;
           }
-          th, td {
-            padding: 12px 10px;
+
+          thead th {
+            background: #f3f7fb;
+            color: var(--muted);
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.1em;
+            padding: 14px 16px;
             text-align: left;
             border-bottom: 1px solid var(--line);
+          }
+
+          tbody td {
+            padding: 15px 16px;
+            border-bottom: 1px solid #edf2f7;
             vertical-align: top;
           }
-          th {
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--muted);
+
+          tbody tr:nth-child(even) {
+            background: #fcfdff;
           }
-          .money { text-align: right; }
+
+          tbody tr:last-child td {
+            border-bottom: none;
+          }
+
+          .col-right { text-align: right; white-space: nowrap; }
+          .col-center { text-align: center; white-space: nowrap; }
+
+          .line-items {
+            display: grid;
+            gap: 14px;
+            margin-top: 18px;
+            grid-template-columns: minmax(0, 1.3fr) 0.7fr;
+          }
+
+          .notes,
           .totals {
-            width: 320px;
-            margin-left: auto;
-            margin-top: 24px;
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            padding: 18px;
+            background: #fff;
           }
-          .total-row {
+
+          .section-title {
+            margin: 0 0 12px;
+            font-size: 15px;
+            letter-spacing: -0.01em;
+          }
+
+          .note-list {
+            margin: 0;
+            padding-left: 18px;
+            color: var(--muted);
+            line-height: 1.7;
+          }
+
+          .totals-row {
             display: flex;
             justify-content: space-between;
-            gap: 20px;
+            gap: 16px;
             padding: 10px 0;
-            border-bottom: 1px solid var(--line);
+            border-bottom: 1px solid #edf2f7;
           }
-          .total-row.grand {
+
+          .totals-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+          }
+
+          .totals-row strong {
+            font-size: 15px;
+          }
+
+          .totals-row.grand {
+            margin-top: 8px;
+            padding-top: 14px;
+            border-top: 1px solid var(--line);
             font-size: 20px;
             font-weight: 800;
             color: var(--brand);
-            border-bottom: none;
-            padding-top: 16px;
           }
-          .print-note {
-            margin-top: 28px;
+
+          .footer {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            align-items: flex-end;
+            padding: 0 32px 28px;
             color: var(--muted);
-            font-size: 13px;
-            line-height: 1.7;
           }
+
+          .footer small {
+            display: block;
+            line-height: 1.6;
+          }
+
+          .signature {
+            min-width: 240px;
+            text-align: right;
+          }
+
+          .signature .line {
+            margin-top: 34px;
+            border-top: 1px solid var(--line);
+            padding-top: 10px;
+          }
+
           @page {
             size: A4;
-            margin: 14mm;
+            margin: 12mm;
           }
+
           @media print {
             body {
               background: #fff;
               padding: 0;
             }
-            .print-sheet {
+
+            .sheet {
               max-width: none;
               border-radius: 0;
-              padding: 0;
               box-shadow: none;
+              border: none;
+            }
+
+            .hero,
+            .content,
+            .footer {
+              padding-left: 0;
+              padding-right: 0;
+            }
+
+            .meta-grid {
+              padding-left: 0;
+              padding-right: 0;
+            }
+
+            .line-items {
+              grid-template-columns: 1fr;
             }
           }
         </style>
       </head>
       <body>
-        <main class="print-sheet">
-          <section class="print-head">
-            <div>
-              <p class="brand-mark">${escapeHtml(current.senderBrandName || 'PropFast Studio')}</p>
-              <h1>${escapeHtml(current.projectName || 'Tên dự án')}</h1>
+        <main class="sheet">
+          <section class="hero">
+            <div class="hero-top">
+              <div style="min-width:0;">
+                <div class="brand">
+                  <div class="brand-badge">P</div>
+                  <p class="brand-name">${escapeHtml(current.senderBrandName || 'PropFast Studio')}</p>
+                </div>
+                <h1 class="title">${escapeHtml(current.projectName || 'Tên dự án')}</h1>
+                <p class="subtitle">Báo giá chi tiết dành cho ${escapeHtml(current.clientName || 'khách hàng')} với thông tin tổng quan, hạng mục thực hiện và chi phí cuối cùng được trình bày rõ ràng.</p>
+              </div>
+              <div class="status-pill">${getStatusLabel(current.status)}</div>
             </div>
-            <div class="status-badge">${getStatusLabel(current.status)}</div>
           </section>
 
           <section class="meta-grid">
             <div class="meta-card"><span>Khách hàng</span><strong>${escapeHtml(current.clientName || 'Tên khách hàng')}</strong></div>
-            <div class="meta-card"><span>Ngày tạo</span><strong>${current.createdAt ? new Date(current.createdAt).toLocaleDateString('vi-VN') : 'Chưa lưu'}</strong></div>
-            <div class="meta-card"><span>Liên hệ</span><strong>${escapeHtml(current.senderPhone || 'Chưa cấu hình')}</strong></div>
-            <div class="meta-card"><span>STK ngân hàng</span><strong>${escapeHtml(current.senderBankAccount || 'Chưa cấu hình')}</strong></div>
-            <div class="meta-card"><span>Giảm giá</span><strong>${current.discountPercent}%</strong></div>
-            <div class="meta-card"><span>VAT</span><strong>${current.vatEnabled ? `${current.vatPercent}%` : 'Không áp dụng'}</strong></div>
-            <div class="meta-card"><span>Hạn chót</span><strong>${current.expiry ? new Date(current.expiry).toLocaleDateString('vi-VN') : 'Chưa đặt'}</strong></div>
+            <div class="meta-card"><span>Ngày tạo</span><strong>${createdAtLabel}</strong></div>
+            <div class="meta-card"><span>Hạn chót</span><strong>${expiryLabel}</strong></div>
             <div class="meta-card"><span>Tiền tệ</span><strong>${escapeHtml(current.currencyCode || 'VND')}</strong></div>
           </section>
 
-          <section class="summary-grid">
-            <div class="summary-card"><span>Tạm tính</span><strong>${formatCurrency(current.subtotal || 0)}</strong></div>
-            <div class="summary-card"><span>Giảm giá</span><strong>${formatCurrency(current.discountAmount || 0)}</strong></div>
-            <div class="summary-card"><span>VAT</span><strong>${formatCurrency(current.vatAmount || 0)}</strong></div>
+          <section class="content">
+            <div class="summary-grid">
+              <div class="summary-card main">
+                <span>Tổng cộng</span>
+                <strong>${formatCurrency(current.total || 0)}</strong>
+              </div>
+              <div class="summary-card">
+                <span>Tạm tính</span>
+                <strong>${formatCurrency(current.subtotal || 0)}</strong>
+              </div>
+              <div class="summary-card">
+                <span>Chiết khấu + VAT</span>
+                <strong>${formatCurrency((current.discountAmount || 0) + (current.vatAmount || 0))}</strong>
+              </div>
+            </div>
+
+            <div class="table-shell">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Dịch vụ</th>
+                    <th class="col-center">SL</th>
+                    <th class="col-right">Đơn giá</th>
+                    <th class="col-right">Thành tiền</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${current.items.map((item) => `
+                    <tr>
+                      <td>${escapeHtml(item.serviceName || '—')}</td>
+                      <td class="col-center">${item.quantity || 0}</td>
+                      <td class="col-right">${formatCurrency(item.unitPrice || 0)}</td>
+                      <td class="col-right">${formatCurrency((item.quantity || 0) * (item.unitPrice || 0))}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+
+            <div class="line-items">
+              <div class="notes">
+                <p class="section-title">Điều khoản dịch vụ</p>
+                <ul class="note-list">
+                  ${current.serviceTerms.map((term) => `<li>${escapeHtml(term)}</li>`).join('')}
+                </ul>
+              </div>
+
+              <div class="totals">
+                <p class="section-title">Tổng kết</p>
+                <div class="totals-row"><span>Tạm tính</span><strong>${formatCurrency(current.subtotal || 0)}</strong></div>
+                <div class="totals-row"><span>Giảm giá</span><strong>${formatCurrency(current.discountAmount || 0)}</strong></div>
+                <div class="totals-row"><span>VAT</span><strong>${formatCurrency(current.vatAmount || 0)}</strong></div>
+                <div class="totals-row grand"><span>Tổng cộng</span><strong>${formatCurrency(current.total || 0)}</strong></div>
+              </div>
+            </div>
           </section>
 
-          <table>
-            <thead>
-              <tr>
-                <th>Dịch vụ</th>
-                <th>Số lượng</th>
-                <th class="money">Đơn giá</th>
-                <th class="money">Thành tiền</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${current.items.map((item) => `
-                <tr>
-                  <td>${escapeHtml(item.serviceName || '—')}</td>
-                  <td>${item.quantity || 0}</td>
-                  <td class="money">${formatCurrency(item.unitPrice || 0)}</td>
-                  <td class="money">${formatCurrency((item.quantity || 0) * (item.unitPrice || 0))}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-
-          <section class="totals">
-            <div class="total-row"><span>Tạm tính</span><strong>${formatCurrency(current.subtotal || 0)}</strong></div>
-            <div class="total-row"><span>Giảm giá</span><strong>${formatCurrency(current.discountAmount || 0)}</strong></div>
-            <div class="total-row"><span>VAT</span><strong>${formatCurrency(current.vatAmount || 0)}</strong></div>
-            <div class="total-row grand"><span>Tổng cộng</span><strong>${formatCurrency(current.total || 0)}</strong></div>
+          <section class="footer">
+            <small>
+              Báo giá được xuất từ PropFast.<br />
+              Khi hộp thoại in xuất hiện, hãy chọn Save as PDF hoặc Microsoft Print to PDF để lưu thành file.
+            </small>
+            <div class="signature">
+              <small>Đại diện báo giá</small>
+              <div class="line">${escapeHtml(current.senderBrandName || 'PropFast Studio')}</div>
+            </div>
           </section>
-
-          <p class="print-note"><strong>Điều khoản dịch vụ:</strong><br />${current.serviceTerms.map((term) => escapeHtml(term)).join('<br />')}</p>
-          <p class="print-note">Báo giá này được xuất từ PropFast. Khi hộp thoại in xuất hiện, chọn đích là Save as PDF hoặc Microsoft Print to PDF để lưu thành file PDF.</p>
         </main>
         <script>
           window.addEventListener('load', () => {
-            setTimeout(() => {
-              window.print();
-            }, 180);
+            setTimeout(() => window.print(), 220);
           });
-          window.addEventListener('afterprint', () => {
-            window.close();
-          });
+          window.addEventListener('afterprint', () => window.close());
         </script>
       </body>
     </html>
@@ -1398,7 +1632,10 @@ function loadProject(projectId, options = {}) {
   project.items.forEach((item) => {
     const row = createItemRow(item);
     itemsContainer.appendChild(row);
-    requestAnimationFrame(() => row.classList.add('is-visible'));
+    requestAnimationFrame(() => {
+      row.classList.add('is-visible');
+      requestAnimationFrame(() => alignRemoveButton(row));
+    });
   });
   renderProjectList();
   updateTotals();
@@ -1447,108 +1684,6 @@ function updateProposalStatus(id, status) {
   showToast(status === 'Approved' ? 'Báo giá đã được duyệt' : 'Trạng thái đã cập nhật');
 }
 
-const QUICK_TEMPLATES = [
-  {
-    key: 'web',
-    templateName: 'Thiết kế Web',
-    clientName: 'Công ty ABC',
-    projectName: 'Website Thương mại Điện tử',
-    discountPercent: 5,
-    items: [
-      { serviceName: 'Thiết kế Giao diện UI/UX', quantity: 1, unitPrice: 5000000 },
-      { serviceName: 'Lập trình Front-end', quantity: 1, unitPrice: 10000000 },
-    ],
-    toast: '✅ Đã áp dụng mẫu Thiết kế Web',
-  },
-  {
-    key: 'marketing',
-    templateName: 'Marketing',
-    clientName: 'Startup Growth Lab',
-    projectName: 'Chiến dịch Marketing',
-    discountPercent: 8,
-    items: [{ serviceName: 'Chạy quảng cáo Facebook/Google', quantity: 1, unitPrice: 4000000 }],
-    toast: '✅ Đã áp dụng mẫu Marketing',
-  },
-  {
-    key: 'photo',
-    templateName: 'Chụp ảnh',
-    clientName: 'Studio Kỷ Yếu Sáng Tạo',
-    projectName: 'Chụp ảnh & Làm album',
-    discountPercent: 3,
-    items: [{ serviceName: 'Chụp ảnh & Làm album Kỷ yếu', quantity: 1, unitPrice: 3500000 }],
-    toast: '✅ Đã áp dụng mẫu Chụp ảnh',
-  },
-];
-
-function closeTemplateSuggestions() {
-  if (!templateSuggestionsList) return;
-  templateSuggestionsList.classList.remove('show');
-  templateSuggestionsList.innerHTML = '';
-}
-
-function renderTemplateSuggestions(templates) {
-  if (!templateSuggestionsList) return;
-  if (!templates.length) {
-    closeTemplateSuggestions();
-    return;
-  }
-
-  templateSuggestionsList.innerHTML = templates
-    .map((template) => `<li class="template-suggestion-item" role="option" data-template-key="${template.key}">${template.templateName}</li>`)
-    .join('');
-  templateSuggestionsList.classList.add('show');
-}
-
-function filterTemplatesByKeyword(keyword) {
-  const normalizedKeyword = keyword.trim().toLowerCase();
-  if (!normalizedKeyword) return [];
-  return QUICK_TEMPLATES.filter((template) => template.templateName.toLowerCase().includes(normalizedKeyword));
-}
-
-function applyTemplate(templateKey) {
-  const selected = QUICK_TEMPLATES.find((template) => template.key === templateKey);
-  if (!selected) return;
-
-  if (templateSearchInput) {
-    templateSearchInput.value = selected.templateName;
-  }
-  clientNameInput.value = selected.clientName;
-  projectNameInput.value = selected.projectName;
-  discountInput.value = String(selected.discountPercent);
-
-  itemsContainer.innerHTML = '';
-  selected.items.forEach((item) => {
-    const row = createItemRow(item);
-    itemsContainer.appendChild(row);
-    requestAnimationFrame(() => row.classList.add('is-visible'));
-  });
-
-  updateTotals();
-  renderPreview();
-  closeTemplateSuggestions();
-  showToast(selected.toast);
-}
-
-function handleTemplateSearchInput() {
-  if (!templateSearchInput) return;
-  const keyword = templateSearchInput.value;
-  const matchedTemplates = filterTemplatesByKeyword(keyword);
-  renderTemplateSuggestions(matchedTemplates);
-}
-
-function handleTemplateSearchFocus() {
-  if (!templateSearchInput) return;
-  const keyword = templateSearchInput.value;
-  if (!keyword.trim()) {
-    closeTemplateSuggestions();
-    return;
-  }
-  renderTemplateSuggestions(filterTemplatesByKeyword(keyword));
-}
-
-window.handleTemplateSearchInput = handleTemplateSearchInput;
-window.handleTemplateSearchFocus = handleTemplateSearchFocus;
-
 function startCountdown() {
   const expiry = expiryInput.value;
   if (countdownIntervalId) {
@@ -1564,10 +1699,10 @@ function startCountdown() {
     const difference = target - now;
 
     if (difference <= 0) {
-      document.getElementById('countdown-days').textContent = '0';
-      document.getElementById('countdown-hours').textContent = '0';
-      document.getElementById('countdown-minutes').textContent = '0';
-      document.getElementById('countdown-seconds').textContent = '0';
+      document.querySelectorAll('.countdown-days').forEach((el) => (el.textContent = '0'));
+      document.querySelectorAll('.countdown-hours').forEach((el) => (el.textContent = '0'));
+      document.querySelectorAll('.countdown-minutes').forEach((el) => (el.textContent = '0'));
+      document.querySelectorAll('.countdown-seconds').forEach((el) => (el.textContent = '0'));
       return;
     }
 
@@ -1576,15 +1711,10 @@ function startCountdown() {
     const minutes = Math.floor((difference / (1000 * 60)) % 60);
     const seconds = Math.floor((difference / 1000) % 60);
 
-    const dayEl = document.getElementById('countdown-days');
-    const hourEl = document.getElementById('countdown-hours');
-    const minuteEl = document.getElementById('countdown-minutes');
-    const secondEl = document.getElementById('countdown-seconds');
-
-    if (dayEl) dayEl.textContent = days;
-    if (hourEl) hourEl.textContent = hours;
-    if (minuteEl) minuteEl.textContent = minutes;
-    if (secondEl) secondEl.textContent = seconds;
+    document.querySelectorAll('.countdown-days').forEach((el) => (el.textContent = days));
+    document.querySelectorAll('.countdown-hours').forEach((el) => (el.textContent = hours));
+    document.querySelectorAll('.countdown-minutes').forEach((el) => (el.textContent = minutes));
+    document.querySelectorAll('.countdown-seconds').forEach((el) => (el.textContent = seconds));
   };
 
   update();
@@ -1605,23 +1735,6 @@ function bindEvents() {
 
   if (addItemBtn) {
     addItemBtn.addEventListener('click', () => addItemRow());
-  }
-
-  if (templateSuggestionsList) {
-    templateSuggestionsList.addEventListener('click', (event) => {
-      const item = event.target.closest('[data-template-key]');
-      if (!item?.dataset.templateKey) return;
-      applyTemplate(item.dataset.templateKey);
-    });
-  }
-
-  if (templateSearchInput) {
-    templateSearchInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') {
-        closeTemplateSuggestions();
-        templateSearchInput.blur();
-      }
-    });
   }
 
   [clientNameInput, projectNameInput, discountInput, vatEnabledInput, expiryInput, costInput].forEach((input) => {
@@ -1667,12 +1780,6 @@ function bindEvents() {
     if (event.target.closest('.project-actions')) return;
     openProjectMenuId = null;
     renderProjectList();
-  });
-
-  document.addEventListener('click', (event) => {
-    if (!templateSearchInput || !templateSuggestionsList) return;
-    if (event.target.closest('.template-search')) return;
-    closeTemplateSuggestions();
   });
 
   if (newProjectBtn) {
