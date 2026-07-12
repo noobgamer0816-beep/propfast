@@ -68,6 +68,7 @@
               <p class="sidebar-label">Dự án đang chạy</p>
               <button type="button" class="ghost-pill">+ Mới</button>
             </div>
+            <input id="projectSearchInput" type="text" class="project-search-input" placeholder="Tìm dự án..." autocomplete="off" />
             <div id="projectList" class="project-list"></div>
           </div>
 
@@ -89,6 +90,13 @@
               <button type="button" id="openPredictBtn" class="sidebar-ai-btn">
                 <span>🏠</span> Định Giá Nhanh
               </button>
+              <button type="button" id="exportProposalsBtn" class="sidebar-ai-btn">
+                <span>📤</span> Xuất dữ liệu
+              </button>
+              <button type="button" id="importProposalsBtn" class="sidebar-ai-btn">
+                <span>📥</span> Nhập dữ liệu
+              </button>
+              <input type="file" id="importFileInput" accept=".json" hidden />
             </div>
           </div>
 

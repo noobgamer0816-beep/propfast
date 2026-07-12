@@ -3378,3 +3378,77 @@ body.light-theme .preview-table tbody tr:hover {
     transform: none;
   }
 }
+
+.toast-undo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  white-space: nowrap;
+}
+
+.toast-undo-btn {
+  border: 1px solid rgba(79, 209, 255, 0.4);
+  background: rgba(79, 209, 255, 0.15);
+  color: var(--primary);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.toast-undo-btn:hover {
+  background: rgba(79, 209, 255, 0.28);
+}
+
+.chatbot-api-warning {
+  background: rgba(255, 179, 71, 0.12);
+  border: 1px solid rgba(255, 179, 71, 0.3);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: var(--warning);
+}
+
+.chatbot-api-warning strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.chatbot-api-warning code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.82rem;
+}
+
+.chatbot-api-warning a {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.project-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  color: var(--text);
+  font-size: 0.84rem;
+  outline: none;
+  transition: border-color 0.24s ease, box-shadow 0.24s ease;
+}
+
+.project-search-input:focus {
+  border-color: rgba(79, 209, 255, 0.64);
+  box-shadow: 0 0 0 3px rgba(79, 209, 255, 0.12);
+}
+
+.project-search-input::placeholder {
+  color: var(--muted);
+  opacity: 0.7;
+}

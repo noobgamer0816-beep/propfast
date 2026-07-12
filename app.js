@@ -73,6 +73,7 @@ let modalReturnFocusElement = null;
 let systemSettingsSnapshot = null;
 let settingsDirty = false;
 let settingsDirtyRafId = null;
+let projectSearchQuery = '';
 const MODAL_FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 const sampleProjects = [
@@ -245,12 +246,41 @@ function showToast(message) {
   }, 2600);
 }
 
+function showUndoToast(message, onUndo) {
+  if (!toastContainer) return;
+  const toastEl = document.createElement('div');
+  toastEl.className = 'toast toast-undo';
+  toastEl.innerHTML = `<span>${escapeHtml(message)}</span><button class="toast-undo-btn" type="button">Hoàn tác</button>`;
+  toastContainer.appendChild(toastEl);
+  requestAnimationFrame(() => toastEl.classList.add('show'));
+  playToastTone();
+
+  const undoBtn = toastEl.querySelector('.toast-undo-btn');
+  let undone = false;
+  if (undoBtn) {
+    undoBtn.addEventListener('click', () => {
+      undone = true;
+      onUndo();
+      toastEl.classList.remove('show');
+      setTimeout(() => toastEl.remove(), 220);
+      showToast('Đã hoàn tác');
+    });
+  }
+
+  clearTimeout(toastEl.timeoutId);
+  toastEl.timeoutId = setTimeout(() => {
+    if (undone) return;
+    toastEl.classList.remove('show');
+    setTimeout(() => toastEl.remove(), 220);
+  }, 5000);
+}
+
 function startRealtimeToastLoop() {
   if (toastIntervalId || !systemSettings.liveSimulationEnabled) return;
   const liveNames = ['Công ty ABC', 'Tập đoàn X', 'Studio Vinhomes', 'Luxury Club Co.', 'Sunrise Holdings'];
   toastIntervalId = setInterval(() => {
     const name = liveNames[Math.floor(Math.random() * liveNames.length)];
-    showToast(`👀 ${name} vừa mở xem báo giá của bạn.`);
+    showToast(`[Demo] ${name} vừa mở xem báo giá của bạn.`);
   }, 14000);
 }
 
@@ -1382,7 +1412,16 @@ function updateTermsInPreview() {
 
 function renderProjectList() {
   if (!projectList) return;
-  projectList.innerHTML = sampleProjects
+  const filtered = projectSearchQuery
+    ? sampleProjects.filter((p) => {
+        const q = projectSearchQuery.toLowerCase();
+        return (p.label || '').toLowerCase().includes(q)
+          || (p.projectName || '').toLowerCase().includes(q)
+          || (p.clientName || '').toLowerCase().includes(q);
+      })
+    : sampleProjects;
+
+  projectList.innerHTML = filtered
     .map((project) => {
       const isMenuOpen = openProjectMenuId === project.id;
       return `
@@ -1458,12 +1497,17 @@ function deleteProject(projectId) {
   const shouldDelete = window.confirm(`Bạn có chắc muốn xóa dự án "${project.label}" không?`);
   if (!shouldDelete) return;
 
+  const deletedProject = { ...project };
   sampleProjects.splice(index, 1);
   openProjectMenuId = null;
 
   if (!sampleProjects.length) {
     resetEditorForNoProjects();
-    showToast(`Đã xóa ${project.label}`);
+    showUndoToast(`Đã xóa "${deletedProject.label}"`, () => {
+      sampleProjects.unshift(deletedProject);
+      loadProject(deletedProject.id, { silent: true });
+      renderProjectList();
+    });
     return;
   }
 
@@ -1473,7 +1517,11 @@ function deleteProject(projectId) {
     renderProjectList();
   }
 
-  showToast(`Đã xóa ${project.label}`);
+  showUndoToast(`Đã xóa "${deletedProject.label}"`, () => {
+    sampleProjects.unshift(deletedProject);
+    loadProject(deletedProject.id, { silent: true });
+    renderProjectList();
+  });
 }
 
 function getFilteredProposals() {
@@ -1737,6 +1785,14 @@ function bindEvents() {
     addItemBtn.addEventListener('click', () => addItemRow());
   }
 
+  const projectSearchInput = document.getElementById('projectSearchInput');
+  if (projectSearchInput) {
+    projectSearchInput.addEventListener('input', (event) => {
+      projectSearchQuery = event.target.value.trim();
+      renderProjectList();
+    });
+  }
+
   [clientNameInput, projectNameInput, discountInput, vatEnabledInput, expiryInput, costInput].forEach((input) => {
     input.addEventListener('input', () => {
       renderPreview();
@@ -1788,16 +1844,22 @@ function bindEvents() {
 
   if (copyLinkBtn) {
     copyLinkBtn.addEventListener('click', async () => {
-      const link = activeProposalId ? `https://propfast.local/proposal/${activeProposalId}` : 'https://propfast.local/proposal/demo';
+      const current = getCurrentPreviewData();
+      const text = `BÁO GIÁ: ${current.projectName}\n`
+        + `Khách hàng: ${current.clientName}\n`
+        + `Tổng cộng: ${formatCurrency(current.total)}\n`
+        + `Hạng mục:\n`
+        + current.items.map(i => `  - ${i.serviceName}: ${i.quantity} x ${formatCurrency(i.unitPrice)} = ${formatCurrency(i.quantity * i.unitPrice)}`).join('\n')
+        + `\nĐiều khoản: ${current.serviceTerms.join(' | ')}`;
       try {
-        const copied = await copyTextToClipboard(link);
+        const copied = await copyTextToClipboard(text);
         if (copied) {
-          showToast('🔗 Đã sao chép đường link báo giá vào bộ nhớ tạm!');
+          showToast('📋 Đã sao chép thông tin báo giá! Dán vào Zalo/Email để gửi khách.');
           return;
         }
         showToast('⚠️ Không thể sao chép tự động. Vui lòng sao chép thủ công.');
       } catch (error) {
-        console.error('Không thể sao chép link báo giá:', error);
+        console.error('Không thể sao chép báo giá:', error);
         showToast('⚠️ Không thể sao chép tự động. Vui lòng sao chép thủ công.');
       }
     });
@@ -2040,18 +2102,68 @@ if (closeConsultBtn) {
 if (consultBackdrop) {
   consultBackdrop.addEventListener('click', closeConsultModal);
 }
-if (consultForm) {
-  consultForm.addEventListener('submit', handleConsultSubmit);
+  if (consultForm) {
+    consultForm.addEventListener('submit', handleConsultSubmit);
 
-  // Xóa lỗi ngay khi user bắt đầu nhập lại
-  consultForm.querySelectorAll('input, select').forEach((el) => {
-    el.addEventListener('input', () => {
-      el.style.borderColor = '';
-      const errEl = document.getElementById(el.id + 'Err');
-      if (errEl) errEl.textContent = '';
+    // Xóa lỗi ngay khi user bắt đầu nhập lại
+    consultForm.querySelectorAll('input, select').forEach((el) => {
+      el.addEventListener('input', () => {
+        el.style.borderColor = '';
+        const errEl = document.getElementById(el.id + 'Err');
+        if (errEl) errEl.textContent = '';
+      });
     });
-  });
-}
+  }
+
+  const exportProposalsBtn = document.getElementById('exportProposalsBtn');
+  const importProposalsBtn = document.getElementById('importProposalsBtn');
+  const importFileInput = document.getElementById('importFileInput');
+
+  if (exportProposalsBtn) {
+    exportProposalsBtn.addEventListener('click', () => {
+      const data = JSON.stringify({ proposals, systemSettings }, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `propfast-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('📤 Đã xuất dữ liệu backup!');
+    });
+  }
+
+  if (importProposalsBtn) {
+    importProposalsBtn.addEventListener('click', () => importFileInput?.click());
+  }
+
+  if (importFileInput) {
+    importFileInput.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data.proposals && Array.isArray(data.proposals)) {
+            proposals = data.proposals;
+            saveProposals();
+          }
+          if (data.systemSettings) {
+            systemSettings = { ...DEFAULT_SYSTEM_SETTINGS, ...data.systemSettings };
+            saveSystemSettings();
+            applySystemSettingsToUi({ applyDiscountDefault: true });
+          }
+          renderDashboard();
+          showToast(`📥 Đã nhập ${proposals.length} báo giá!`);
+        } catch {
+          showToast('❌ File không hợp lệ. Vui lòng chọn file JSON từ PropFast.');
+        }
+      };
+      reader.readAsText(file);
+      importFileInput.value = '';
+    });
+  }
 
 // Đóng modal bằng phím ESC
 window.addEventListener('keydown', (e) => {
@@ -2643,7 +2755,11 @@ window.addEventListener('keydown', (e) => {
       const warn = document.createElement('div');
       warn.id = 'chatbotApiWarning';
       warn.className = 'chatbot-api-warning';
-      warn.innerHTML = 'Chua cai API key. Mo app.js, tim CHATBOT_CONFIG va thay YOUR_OPENAI_KEY bang key thuc. Lay key mien phi tai platform.openai.com.';
+      warn.innerHTML = '<strong>⚠️ Chưa cấu hình API Key</strong><br>'
+        + 'Chatbot đang ở chế độ demo. Để sử dụng AI thật:<br>'
+        + '1. Mở <code>app.js</code> → tìm <code>CHATBOT_CONFIG</code><br>'
+        + '2. Thay <code>YOUR_OPENAI_KEY</code> bằng key thật<br>'
+        + '3. Lấy key miễn phí tại <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com</a>';
       messagesEl.insertBefore(warn, messagesEl.firstChild);
     }
   }

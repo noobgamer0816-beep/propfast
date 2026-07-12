@@ -1,0 +1,13 @@
+{
+  "name": "propfast",
+  "version": "1.0.0",
+  "description": "PropFast - Premium Proposal Workspace for Real Estate",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx serve .",
+    "start": "npx serve ."
+  },
+  "keywords": ["proposal", "real-estate", "báo giá", "bất động sản"],
+  "author": "noobgamer0816-beep",
+  "license": "MIT"
+}
